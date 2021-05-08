@@ -90,14 +90,44 @@ def diff(mask, previousMask, frame):
     return diff
 
 
+
+
+def doTests():
+    testcase("test2")
+    testcase("test3")
+
+
+def testcase(filename):
+    pass
+
+
+def getFrame(capture, showVid):
+    isTrue, frame = capture.read()
+    if not isTrue:
+        return None, None
+
+    # rescale it        
+    frame = rescaleFrame(frame)
+    # grey
+    mask = toGrey(frame)
+    # make it a bit sharper
+    mask = sharpoon(mask)
+    # force super low brightness high contrast
+    mask = apply_brightness_contrast(mask, -126, 115)
+    # mask = apply_brightness_contrast(mask, -127, 116)
+    if debug and showVid:
+        cv.imshow('Mask', mask)
+
+    return frame, mask
+
+
 def analyzeVideo(filename, showVid=True):
     print("Analyzing file: " + filename)
     if not os.path.isfile(filename):
         print("File not found")
         return
-    #filenameBase = Path(filename).stem
-    filenameBase = os.path.splitext(filename)[0]
 
+    filenameBase = os.path.splitext(filename)[0]
 
     # Reading Videos
     capture = cv.VideoCapture(filename)
@@ -106,27 +136,9 @@ def analyzeVideo(filename, showVid=True):
     frameNr = 0
     lastFoundFrameNr = 0
     while True:
-        isTrue, frame = capture.read()
-
-        # rescale it        
-        frame = rescaleFrame(frame)
-        # grey
-        mask = toGrey(frame)
-        # make it a bit sharper
-        mask = sharpoon(mask)
-        # force super low brightness high contrast
-        mask = apply_brightness_contrast(mask, -126, 115)
-        # mask = apply_brightness_contrast(mask, -127, 116)
-        if debug and showVid:
-            cv.imshow('Mask', mask)
-
-        # find movement / diffs
-        #if previousMask is not None:
-        #    # diff works well on brightness adjusted frame
-        #    d = diff(mask, previousMask, frame)
-        #    (frame, didFind) = findContours(d, frame, frameNr)
-        #    if didFind:
-        #        cv.imwrite(str(frameNr) + "_diff.jpg", d)
+        frame, mask = getFrame(capture, showVid)
+        if frame is None:
+            break
 
         # find contours and visualize it in the main frame
         if (frameNr - lastFoundFrameNr) > 10:
@@ -147,11 +159,11 @@ def analyzeVideo(filename, showVid=True):
                 cv.circle(mask, recordedHit.center, 5, (0, 0, 0), -1)
 
                 # write all the pics
-                cv.imwrite(filenameBase + "_" + str(frameNr) + "_cont.jpg", recordedHit.mask)
-                cv.imwrite(filenameBase + "_" + str(frameNr) + "_frame.jpg", frame)
-                cv.imwrite(filenameBase + "_" + str(frameNr) + "_diff.jpg", d)
-                with open(filenameBase + "_" + str(frameNr) + "_info.yaml", 'w') as outfile:
-                    yaml.dump(recordedHit.toDict(), outfile)
+                #cv.imwrite(filenameBase + "_" + str(frameNr) + "_cont.jpg", recordedHit.mask)
+                #cv.imwrite(filenameBase + "_" + str(frameNr) + "_frame.jpg", frame)
+                #cv.imwrite(filenameBase + "_" + str(frameNr) + "_diff.jpg", d)
+                #with open(filenameBase + "_" + str(frameNr) + "_info.yaml", 'w') as outfile:
+                #    yaml.dump(recordedHit.toDict(), outfile)
 
         # show it
         if showVid:
@@ -169,7 +181,7 @@ def analyzeVideo(filename, showVid=True):
 
 
 def main():
-    analyzeVideo('tests/test1.mp4', showVid=False)
+    analyzeVideo('tests/test2.mp4', showVid=True)
 
 if __name__ == "__main__":
     main()
