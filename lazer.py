@@ -49,7 +49,7 @@ def findContours(mask):
 
         # only proceed if the radius meets a minimum size
         if radius > 10:
-            print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
+            #print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
             recordedHit.x = x
@@ -150,7 +150,7 @@ class Lazer(object):
         # also calulate the diff
         self.diff = diff(self.mask, self.previousMask, self.frame)
 
-        # augment mask and frame with indicators?
+        # augment mask,frame,diff with indicators?
         if addIndicator:
             for recordedHit in recordedHits:
                 # add visual indicators to both frame and mask

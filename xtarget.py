@@ -27,9 +27,31 @@ def testcase(filename):
             break
 
         # find contours and visualize it in the main frame
-        contours = lazer.getContours()
-        if len(contours) > 0:
-            print(lazer.frameNr)
+        recordedHits = lazer.getContours()
+        if len(recordedHits) > 0:
+            recordedHit = recordedHits[0]
+            print("Checking dot in frame " + str(lazer.frameNr))
+
+            yamlFilename = "tests/" + filename + "_" + str(lazer.frameNr) + '_info.yaml'
+            if not os.path.isfile(yamlFilename):
+                print("Error: dot detectd, but no tastecase for " + yamlFilename)
+                return
+
+            with open(yamlFilename) as file:
+                yamlRecordedHit = yaml.load(file, Loader=yaml.FullLoader)
+
+                if abs(recordedHit.x - yamlRecordedHit['x']) > 10:
+                    print("Error in dot coordinates: ")
+                    print("  recordedHit.x  : " + str(recordedHit.x))
+                    print("  yamlRecordHit.x: " + str(yamlRecordedHit['x']))
+                else:
+                    print("  X OK")
+                if abs(recordedHit.y - yamlRecordedHit['y']) > 10:
+                    print("Error in dot coordinates: ")
+                    print("  recordedHit.y  : " + str(recordedHit.y))
+                    print("  yamlRecordHit.y: " + str(yamlRecordedHit['y']))
+                else:
+                    print("  Y OK")
 
     lazer.release()
 
