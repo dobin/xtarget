@@ -6,14 +6,32 @@ from skimage.metrics import structural_similarity as ssim
 import os.path
 from utils import *
 from pathlib import Path
+import yaml
 
 debug = True
-lastFoundFrameNr = 0
+
+
+class RecordedHit(object):
+    def __init__(self):
+        self.center = None
+        self.x = 0
+        self.y = 0
+        self.radius = 0
+        self.mask = None
+
+    def toDict(self):
+        me = {
+            'center': self.center,
+            'x': self.x,
+            'y': self.y,
+            'radius': self.radius
+        }
+        return me
+
 
 # from ball_tracking.py
-def findContours(mask, frame, frameNr):
-    global lastFoundFrameNr
-    didFind = False
+def findContours(mask):
+    res = []
 
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
@@ -33,21 +51,17 @@ def findContours(mask, frame, frameNr):
 
         # only proceed if the radius meets a minimum size
         if radius > 10:
-            # draw the circle and centroid on the frame,
-            # then update the list of tracked points
+            print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
-            if (frameNr - lastFoundFrameNr) > 10:
-                didFind = True
-                lastFoundFrameNr = frameNr
-                print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
+            recordedHit = RecordedHit()
+            recordedHit.x = x
+            recordedHit.y = y
+            recordedHit.center = center
+            recordedHit.radius = radius
+            recordedHit.mask = mask.copy()
+            res.append(recordedHit)
 
-                cv.circle(frame, (int(x), int(y)), int(radius), (255, 0, 0), 2)
-                cv.circle(frame, center, 5, (0, 0, 0), -1)
-
-                cv.circle(mask, (int(x), int(y)), int(radius), (255, 0, 0), 2)
-                cv.circle(mask, center, 5, (0, 0, 0), -1)
-
-    return (frame, didFind)
+    return res
 
 
 def diff(mask, previousMask, frame):
@@ -72,22 +86,25 @@ def diff(mask, previousMask, frame):
         cv.rectangle(diff, (x, y), (x + w, y + h), (0, 0, 255), 2)
         #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
-    cv.imshow('diff', diff)
+    #cv.imshow('diff', diff)
     return diff
 
 
-def analyzeVideo(filename):
+def analyzeVideo(filename, showVid=True):
     print("Analyzing file: " + filename)
     if not os.path.isfile(filename):
         print("File not found")
         return
-    filenameBase = Path(filename).stem
+    #filenameBase = Path(filename).stem
+    filenameBase = os.path.splitext(filename)[0]
+
 
     # Reading Videos
     capture = cv.VideoCapture(filename)
 
     previousMask = None
     frameNr = 0
+    lastFoundFrameNr = 0
     while True:
         isTrue, frame = capture.read()
 
@@ -97,11 +114,10 @@ def analyzeVideo(filename):
         mask = toGrey(frame)
         # make it a bit sharper
         mask = sharpoon(mask)
-
         # force super low brightness high contrast
         mask = apply_brightness_contrast(mask, -126, 115)
         # mask = apply_brightness_contrast(mask, -127, 116)
-        if debug:
+        if debug and showVid:
             cv.imshow('Mask', mask)
 
         # find movement / diffs
@@ -113,21 +129,37 @@ def analyzeVideo(filename):
         #        cv.imwrite(str(frameNr) + "_diff.jpg", d)
 
         # find contours and visualize it in the main frame
-        (frame, didFind) = findContours(mask, frame, frameNr)
-        if didFind:
-            cv.imwrite(filenameBase + "_" + str(frameNr) + "_cont.jpg", mask)
-            cv.imwrite(filenameBase + "_" + str(frameNr) + "_frame.jpg", frame)
+        if (frameNr - lastFoundFrameNr) > 10:
+            recordedHits = findContours(mask)
 
-            d = diff(mask, previousMask, frame)
-            cv.imwrite(filenameBase + "_" + str(frameNr) + "_diff.jpg", d)
+            for recordedHit in recordedHits:
+                lastFoundFrameNr = frameNr
 
+                # also check the diff
+                d = diff(mask, previousMask, frame)
+                if showVid:
+                    cv.imshow('Diff', d)
+                
+                # add visual indicators
+                cv.circle(frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
+                cv.circle(frame, recordedHit.center, 5, (0, 0, 0), -1)
+                cv.circle(mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
+                cv.circle(mask, recordedHit.center, 5, (0, 0, 0), -1)
+
+                # write all the pics
+                cv.imwrite(filenameBase + "_" + str(frameNr) + "_cont.jpg", recordedHit.mask)
+                cv.imwrite(filenameBase + "_" + str(frameNr) + "_frame.jpg", frame)
+                cv.imwrite(filenameBase + "_" + str(frameNr) + "_diff.jpg", d)
+                with open(filenameBase + "_" + str(frameNr) + "_info.yaml", 'w') as outfile:
+                    yaml.dump(recordedHit.toDict(), outfile)
 
         # show it
-        cv.imshow('Video', frame)
+        if showVid:
+            cv.imshow('Video', frame)
 
-        # check for end
-        if cv.waitKey(140) & 0xFF==ord('d'):
-            break
+            # check for end
+            if cv.waitKey(20) & 0xFF==ord('d'):
+                break
 
         frameNr+=1
         previousMask = mask
@@ -137,8 +169,7 @@ def analyzeVideo(filename):
 
 
 def main():
-
-    analyzeVideo('tests/test3.mp4')
+    analyzeVideo('tests/test1.mp4', showVid=False)
 
 if __name__ == "__main__":
     main()
