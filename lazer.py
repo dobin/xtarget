@@ -9,13 +9,13 @@ from pathlib import Path
 import yaml
 import argparse
 
+
 class RecordedHit(object):
     def __init__(self):
         self.center = None
         self.x = 0
         self.y = 0
         self.radius = 0
-        self.mask = None
 
     def toDict(self):
         me = {
@@ -25,6 +25,7 @@ class RecordedHit(object):
             'radius': self.radius
         }
         return me
+
 
 # from ball_tracking.py
 def findContours(mask):
@@ -55,7 +56,6 @@ def findContours(mask):
             recordedHit.y = y
             recordedHit.center = center
             recordedHit.radius = radius
-            recordedHit.mask = mask.copy()
             res.append(recordedHit)
 
     return res
@@ -98,6 +98,7 @@ class Lazer(object):
         self.capture = None
         self.frame = None
         self.mask = None
+        self.diff = None
         self.previousMask = None
         self.frameNr = -1  # so it is 0 the first iteration
         self.lastFoundFrameNr = 0
@@ -143,14 +144,15 @@ class Lazer(object):
         recordedHits = findContours(self.mask)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.frameNr
+        else:
+            return []
 
-        for recordedHit in recordedHits:
-            # also check the diff
-            d = diff(self.mask, self.previousMask, self.frame)
-            if self.showVid:
-                cv.imshow('Diff', d)
-            
-            if addIndicator:
+        # also calulate the diff
+        self.diff = diff(self.mask, self.previousMask, self.frame)
+
+        # augment mask and frame with indicators?
+        if addIndicator:
+            for recordedHit in recordedHits:
                 # add visual indicators to both frame and mask
                 cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
                 cv.circle(self.frame, recordedHit.center, 5, (0, 0, 0), -1)
@@ -158,12 +160,8 @@ class Lazer(object):
                 cv.circle(self.mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
                 cv.circle(self.mask, recordedHit.center, 5, (0, 0, 0), -1)
 
-            # write all the pics
-            #cv.imwrite(filenameBase + "_" + str(frameNr) + "_cont.jpg", recordedHit.mask)
-            #cv.imwrite(filenameBase + "_" + str(frameNr) + "_frame.jpg", frame)
-            #cv.imwrite(filenameBase + "_" + str(frameNr) + "_diff.jpg", d)
-            #with open(filenameBase + "_" + str(frameNr) + "_info.yaml", 'w') as outfile:
-            #    yaml.dump(recordedHit.toDict(), outfile)
+                cv.circle(self.diff, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
+                cv.circle(self.diff, recordedHit.center, 5, (0, 0, 0), -1)
 
         return recordedHits
 
@@ -171,6 +169,8 @@ class Lazer(object):
     def displayFrame(self):
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
+        if self.diff is not None:
+            cv.imshow('Diff', self.diff)
 
 
     def release(self):

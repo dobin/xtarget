@@ -17,7 +17,7 @@ def doTests():
 
 
 def testcase(filename):
-    print("Analyzing file: " + filename)
+    print("Test file: " + filename)
     lazer = Lazer(showVid=False)
     lazer.initFile("tests/" + filename + ".mp4")
 
@@ -30,6 +30,30 @@ def testcase(filename):
         contours = lazer.getContours()
         if len(contours) > 0:
             print(lazer.frameNr)
+
+    lazer.release()
+
+
+def writeVideoInfo(filename):
+    print("Analyzing file: " + filename)
+    lazer = Lazer(showVid=False)
+    lazer.initFile("tests/" + filename + ".mp4")
+
+    while True:
+        hasFrame = lazer.nextFrame()
+        if not hasFrame:
+            break
+
+        # find contours and visualize it in the main frame
+        recordedHits = lazer.getContours()
+        for recordedHit in recordedHits:
+            filenameBase = os.path.splitext(filename)[0]
+            # write all the pics
+            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_cont.jpg", lazer.mask)
+            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_frame.jpg", lazer.frame)
+            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_diff.jpg", lazer.diff)
+            with open(filenameBase + "_" + str(lazer.frameNr) + "_info.yaml", 'w') as outfile:
+                yaml.dump(recordedHit.toDict(), outfile)
 
     lazer.release()
 
