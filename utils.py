@@ -1,6 +1,6 @@
 import cv2 as cv
 
-def rescaleFrame(frame, scale=0.5):
+def rescaleFrame(frame, scale=1.0):
     width = int(frame.shape[1] * scale)
     height = int(frame.shape[0] * scale)
     dimensions = (width, height)
@@ -29,8 +29,11 @@ def edgeCascade(frame):
 
 
 # eroding somehow makes lines thicker
-# 
+# - only erode(7, 7) on frame: nearly makes random glare go away, PASS
+# - blur(3, 3) then erode(7,7) PASS
 def sharpoon(frame):
+    #frame = cv.GaussianBlur(frame, (3,3), cv.BORDER_DEFAULT)
+
     # Dilating / blur=
     #frame = cv.dilate(frame, (7,7), iterations=3)
 

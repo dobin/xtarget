@@ -9,17 +9,22 @@ from pathlib import Path
 import yaml
 import argparse
 from lazer import RecordedHit, Lazer
-
+import glob
 
 def doTests():
-    testcase("test2")
     testcase("test3")
+    testcase("test11")
+    testcase("test12")
+    testcase("test13")
 
 
 def testcase(filename):
     print("Test file: " + filename)
     lazer = Lazer(showVid=False)
     lazer.initFile("tests/" + filename + ".mp4")
+
+    yamlFilenameList = glob.glob('tests/' + filename + "*.yaml")
+    yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     while True:
         hasFrame = lazer.nextFrame()
@@ -33,9 +38,15 @@ def testcase(filename):
             print("Checking dot in frame " + str(lazer.frameNr))
 
             yamlFilename = "tests/" + filename + "_" + str(lazer.frameNr) + '_info.yaml'
-            if not os.path.isfile(yamlFilename):
-                print("Error: dot detectd, but no tastecase for " + yamlFilename)
-                return
+            if yamlFilename in yamlFilenameList:
+                yamlFilenameList.remove(yamlFilename)
+            else:
+                print("Err: Found dot with no testcase at frame " + str(lazer.frameNr))
+                continue
+
+            #if not os.path.isfile(yamlFilename):
+            #    print("Error: dot detectd, but no tastecase for " + yamlFilename)
+            #    return
 
             with open(yamlFilename) as file:
                 yamlRecordedHit = yaml.load(file, Loader=yaml.FullLoader)
@@ -44,14 +55,17 @@ def testcase(filename):
                     print("Error in dot coordinates: ")
                     print("  recordedHit.x  : " + str(recordedHit.x))
                     print("  yamlRecordHit.x: " + str(yamlRecordedHit['x']))
-                else:
-                    print("  X OK")
+                #else:
+                #    print("  X OK")
                 if abs(recordedHit.y - yamlRecordedHit['y']) > 10:
                     print("Error in dot coordinates: ")
                     print("  recordedHit.y  : " + str(recordedHit.y))
                     print("  yamlRecordHit.y: " + str(yamlRecordedHit['y']))
-                else:
-                    print("  Y OK")
+                #else:
+                #    print("  Y OK")
+
+    if len(yamlFilenameList) != 0:
+        print("Error: Following dots were not detected: " + str(yamlFilenameList))
 
     lazer.release()
 
@@ -85,6 +99,7 @@ def analyzeVideo(filename):
     lazer = Lazer(showVid=True)
     lazer.initFile(filename)
 
+    cv.namedWindow('Video')
     while True:
         hasFrame = lazer.nextFrame()
         if not hasFrame:
@@ -95,8 +110,18 @@ def analyzeVideo(filename):
         contours = lazer.getContours()
         lazer.displayFrame()
 
-        # check for end
-        if cv.waitKey(20) & 0xFF==ord('d'):
+        # input
+        key = cv.waitKey(2)
+        if key == ord('c'):  # Crop image
+            cv.setMouseCallback('Video', lazer.extract_coordinates_callback)
+            while True:
+                key = cv.waitKey(2)
+                lazer.displayFrame()
+                #cv.imshow('image', staticROI.clone)
+
+                if key == ord('c'):
+                    break
+        if key == ord('q'):
             break
 
     lazer.release()

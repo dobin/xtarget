@@ -46,7 +46,7 @@ def findContours(mask):
         ((x, y), radius) = cv.minEnclosingCircle(c)
         M = cv.moments(c)
         if M["m00"] == 0:
-            print("DIVISION BY ZERO")
+            ##print("DIVISION BY ZERO")
             return res
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
@@ -111,6 +111,10 @@ class Lazer(object):
         self.showGlare = True
         self.graceTime = 10  # How many frames between detections
 
+        # for extract_coordinates_callback
+        self.image_coordinates = None
+        self.selected_ROI = False
+
 
     def initFile(self, filename):
         if not os.path.isfile(filename):
@@ -131,6 +135,13 @@ class Lazer(object):
         # Frame: rescale it
         self.frame = rescaleFrame(self.frame)
 
+        # Crop if user wants to
+        if self.selected_ROI:
+            x1 = self.image_coordinates[0][0]
+            y1 = self.image_coordinates[0][1]
+            x2 = self.image_coordinates[1][0]
+            y2 = self.image_coordinates[1][1]
+            self.frame = self.frame[y1:y2, x1:x2]
 
         # we have three posibilities to make a mask: 
         # - cv.addedWeight brightness/constrast, like in gimp
@@ -141,10 +152,12 @@ class Lazer(object):
 
         # Mask: grey
         self.mask = toGrey(self.frame)
+
+        self.mask = sharpoon(self.mask)
         self.mask = trasholding(self.mask)
 
         # Mask: make it a bit sharper
-        #self.mask = sharpoon(self.mask)
+        
         # Mask: force super low brightness high contrast
         #self.mask = apply_brightness_contrast(self.mask, -126, 115)
         #orig: mask = apply_brightness_contrast(mask, -127, 116)
@@ -202,6 +215,25 @@ class Lazer(object):
             (x, y, w, h) = cv.boundingRect(c)
             cv.rectangle(self.frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
             #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+    
+    def extract_coordinates_callback(self, event, x, y, flags, parameters):
+        # Record starting (x,y) coordinates on left mouse button click
+        if event == cv.EVENT_LBUTTONDOWN:
+            self.image_coordinates = [(x,y)]
+
+        # Record ending (x,y) coordintes on left mouse bottom release
+        elif event == cv.EVENT_LBUTTONUP:
+            self.image_coordinates.append((x,y))
+            self.selected_ROI = True
+
+            # Draw rectangle around ROI
+            cv.rectangle(self.frame, self.image_coordinates[0], self.image_coordinates[1], (0,255,0), 2)
+            print("ROI: " + str(self.image_coordinates))
+
+        # Clear drawing boxes on right mouse button click
+        elif event == cv.EVENT_RBUTTONDOWN:
+            self.selected_ROI = False
 
 
     def displayFrame(self):
