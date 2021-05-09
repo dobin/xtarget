@@ -11,12 +11,15 @@ import argparse
 from lazer import RecordedHit, Lazer
 import glob
 
+
 def doTests():
     testcase("test3")
     testcase("test11")
     testcase("test12")
     testcase("test13")
     testcase("test20-far")
+    testcase("test21")
+    testcase("test22")
 
 
 def testcase(filename):
@@ -111,6 +114,9 @@ def analyzeVideo(filename):
         # find contours and visualize it in the main frame
         contours = lazer.getContours()
         lazer.displayFrame()
+
+        if False:
+            cv.imwrite('test20-far.' + str(lazer.frameNr) + '.frame.jpg' , lazer.frame)
 
         # input
         key = cv.waitKey(2)

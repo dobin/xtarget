@@ -194,17 +194,22 @@ class Lazer(object):
             self.diff = diff(self.mask, self.previousMask, self.frame)
         
         # augment mask,frame,diff with indicators?
-        if addIndicator and not self.showGlare:
+        if addIndicator: # and not self.showGlare:
             for recordedHit in recordedHits:
                 # add visual indicators to both frame and mask
                 cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
-                cv.circle(self.frame, recordedHit.center, 5, (0, 0, 0), -1)
+                cv.circle(self.frame, recordedHit.center, 5, (0, 255, 0), -1)
 
                 cv.circle(self.mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
-                cv.circle(self.mask, recordedHit.center, 5, (0, 0, 0), -1)
+                cv.circle(self.mask, recordedHit.center, 5, (0, 255, 0), -1)
 
                 cv.circle(self.diff, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
-                cv.circle(self.diff, recordedHit.center, 5, (0, 0, 0), -1)
+                cv.circle(self.diff, recordedHit.center, 5, (0, 255, 0), -1)
+
+                if False:
+                    cv.imwrite("xxx_" + str(self.frameNr) + "frame.jpg", self.frame)
+                    cv.imwrite("xxx_" + str(self.frameNr) + "mask.jpg", self.mask)
+                    cv.imwrite("xxx_" + str(self.frameNr) + "diff.jpg", self.diff)
 
         return recordedHits
 
