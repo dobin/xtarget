@@ -13,18 +13,20 @@ import glob
 
 
 def doTests():
-    testcase("test3")
-    testcase("test11")
-    testcase("test12")
-    testcase("test13")
-    testcase("test20-far")
-    testcase("test21")
-    testcase("test22")
+    # all recorded with surface book front camera 30fps if not stated otherwise
+    testcase("test3")   # room 1
+    testcase("test11")  # room 2
+    testcase("test12")  # room 3
+    testcase("test13")  # room 4
+    testcase("test20-far")  # far away, sunny
+    testcase("test21")  # far away, dark
+    testcase("test22")  # oneplus 8 pro phone cam, 60fps, far, dark
+    #testcase("test23")  # oneplus 8 pro phone cam, 240fps, far, dark
 
 
 def testcase(filename):
     print("Test file: " + filename)
-    lazer = Lazer(showVid=False)
+    lazer = Lazer(showVid=False, showGlare=False)
     lazer.initFile("tests/" + filename + ".mp4")
 
     # get all testcases to check if all triggered

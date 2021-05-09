@@ -1,4 +1,5 @@
 import cv2 as cv
+import numpy as np
 
 def rescaleFrame(frame, scale=1.0):
     width = int(frame.shape[1] * scale)
@@ -26,6 +27,9 @@ def edgeCascade(frame):
     # Edge Cascade
     frame = cv.Canny(frame, 125, 175)
     return frame
+
+def frameIdentical(image1, image2):
+    return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
 
 
 # eroding somehow makes lines thicker

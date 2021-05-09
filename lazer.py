@@ -98,7 +98,7 @@ def diff(mask, previousMask, frame):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid):
+    def __init__(self, showVid, showGlare=True):
         self.capture = None
         self.frame = None
         self.mask = None
@@ -107,7 +107,7 @@ class Lazer(object):
         self.frameNr = -1  # so it is 0 the first iteration
         self.lastFoundFrameNr = 0
         self.showVid = showVid
-        self.showGlare = True
+        self.showGlare = showGlare
         self.graceTime = 10  # How many frames between detections
 
         # for extract_coordinates_callback
@@ -183,9 +183,16 @@ class Lazer(object):
         if (self.frameNr - self.lastFoundFrameNr) < self.graceTime:
             return []
 
+        # check if there is any change at all
+        # if no change, do not attempt to find contours. 
+        # this can save processing power
+        if frameIdentical(self.mask, self.previousMask):
+            return []
+
         recordedHits = findContours(self.mask)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.frameNr
+            print("--> Found hit")
         else:
             return []
 
