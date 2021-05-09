@@ -1,2 +1,6 @@
 experimentation/*
 *.pyc
+tests_glare/*
+tests_cont/*
+tests/*
+*.jpg
