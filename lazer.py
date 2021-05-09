@@ -91,7 +91,6 @@ def diff(mask, previousMask, frame):
     return diff
 
 
-#
 # Order:
 # - init*
 # - nextFrame()
@@ -123,6 +122,17 @@ class Lazer(object):
 
         self.capture = cv.VideoCapture(filename)
 
+        # check for crop settings for file
+        vidYaml = filename +'.yaml'
+        if os.path.isfile(vidYaml):
+            print("Has croppings...")
+            with open(vidYaml) as file:
+                vidYamlData = yaml.load(file, Loader=yaml.FullLoader)
+                self.image_coordinates = []
+                self.image_coordinates.append((vidYamlData['x1'], vidYamlData['y1']))
+                self.image_coordinates.append((vidYamlData['x2'], vidYamlData['y2']))
+                self.selected_ROI = True
+
 
     def nextFrame(self):
         self.frameNr += 1
@@ -153,7 +163,7 @@ class Lazer(object):
         # Mask: grey
         self.mask = toGrey(self.frame)
 
-        self.mask = sharpoon(self.mask)
+        #self.mask = sharpoon(self.mask)
         self.mask = trasholding(self.mask)
 
         # Mask: make it a bit sharper
@@ -180,8 +190,9 @@ class Lazer(object):
             return []
 
         # also calulate the diff
-        self.diff = diff(self.mask, self.previousMask, self.frame)
-
+        if self.mask.shape == self.previousMask.shape:
+            self.diff = diff(self.mask, self.previousMask, self.frame)
+        
         # augment mask,frame,diff with indicators?
         if addIndicator and not self.showGlare:
             for recordedHit in recordedHits:

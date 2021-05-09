@@ -16,6 +16,7 @@ def doTests():
     testcase("test11")
     testcase("test12")
     testcase("test13")
+    testcase("test20-far")
 
 
 def testcase(filename):
@@ -23,7 +24,8 @@ def testcase(filename):
     lazer = Lazer(showVid=False)
     lazer.initFile("tests/" + filename + ".mp4")
 
-    yamlFilenameList = glob.glob('tests/' + filename + "*.yaml")
+    # get all testcases to check if all triggered
+    yamlFilenameList = glob.glob('tests/' + filename + "_*.yaml")
     yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     while True:
