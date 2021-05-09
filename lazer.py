@@ -45,6 +45,9 @@ def findContours(mask):
         c = max(cnts, key=cv.contourArea)
         ((x, y), radius) = cv.minEnclosingCircle(c)
         M = cv.moments(c)
+        if M["m00"] == 0:
+            print("DIVISION BY ZERO")
+            return res
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
         # only proceed if the radius meets a minimum size
@@ -68,23 +71,25 @@ def diff(mask, previousMask, frame):
     diff = (diff * 255).astype("uint8")
     #print("SSIM: {}".format(score))
 
-    # threshold the difference image, followed by finding contours to
-    # obtain the regions of the two input images that differ
-    thresh = cv.threshold(diff, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
-    cnts = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
+    if False:
+        # threshold the difference image, followed by finding contours to
+        # obtain the regions of the two input images that differ
+        thresh = cv.threshold(diff, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
+        cnts = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
 
-    # loop over the contours
-    for c in cnts:
-        # compute the bounding box of the contour and then draw the
-        # bounding box on both input images to represent where the two
-        # images differ
-        (x, y, w, h) = cv.boundingRect(c)
-        cv.rectangle(diff, (x, y), (x + w, y + h), (0, 0, 255), 2)
-        #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        # loop over the contours
+        for c in cnts:
+            # compute the bounding box of the contour and then draw the
+            # bounding box on both input images to represent where the two
+            # images differ
+            (x, y, w, h) = cv.boundingRect(c)
+            cv.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
     #cv.imshow('diff', diff)
     return diff
+
 
 #
 # Order:
@@ -103,7 +108,7 @@ class Lazer(object):
         self.frameNr = -1  # so it is 0 the first iteration
         self.lastFoundFrameNr = 0
         self.showVid = showVid
-        
+        self.showGlare = True
         self.graceTime = 10  # How many frames between detections
 
 
@@ -125,13 +130,27 @@ class Lazer(object):
 
         # Frame: rescale it
         self.frame = rescaleFrame(self.frame)
+
+
+        # we have three posibilities to make a mask: 
+        # - cv.addedWeight brightness/constrast, like in gimp
+        # - cv.inRange in hsv range to filter
+        # - cv.threshhold RGB byte filter
+
+        ###self.mask = filterShit(self.frame)
+
         # Mask: grey
         self.mask = toGrey(self.frame)
+        self.mask = trasholding(self.mask)
+
         # Mask: make it a bit sharper
-        self.mask = sharpoon(self.mask)
+        #self.mask = sharpoon(self.mask)
         # Mask: force super low brightness high contrast
-        self.mask = apply_brightness_contrast(self.mask, -126, 115)
-        # mask = apply_brightness_contrast(mask, -127, 116)
+        #self.mask = apply_brightness_contrast(self.mask, -126, 115)
+        #orig: mask = apply_brightness_contrast(mask, -127, 116)
+        
+        if self.showGlare:
+            self.checkGlare()
 
         return True
 
@@ -151,7 +170,7 @@ class Lazer(object):
         self.diff = diff(self.mask, self.previousMask, self.frame)
 
         # augment mask,frame,diff with indicators?
-        if addIndicator:
+        if addIndicator and not self.showGlare:
             for recordedHit in recordedHits:
                 # add visual indicators to both frame and mask
                 cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
@@ -164,6 +183,25 @@ class Lazer(object):
                 cv.circle(self.diff, recordedHit.center, 5, (0, 0, 0), -1)
 
         return recordedHits
+
+
+    def checkGlare(self):
+        # threshold the difference image, followed by finding contours to
+        # obtain the regions of the two input images that differ
+        #thresh = cv.threshold(diff, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
+        #cnts = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
+        cnts = cv.findContours(self.mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+
+        # loop over the contours
+        for c in cnts:
+            # compute the bounding box of the contour and then draw the
+            # bounding box on both input images to represent where the two
+            # images differ
+            (x, y, w, h) = cv.boundingRect(c)
+            cv.rectangle(self.frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
 
     def displayFrame(self):

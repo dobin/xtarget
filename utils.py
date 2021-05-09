@@ -1,6 +1,6 @@
 import cv2 as cv
 
-def rescaleFrame(frame, scale=1.0):
+def rescaleFrame(frame, scale=0.5):
     width = int(frame.shape[1] * scale)
     height = int(frame.shape[0] * scale)
     dimensions = (width, height)
@@ -38,6 +38,25 @@ def sharpoon(frame):
     frame = cv.erode(frame, (7,7), iterations=3)
 
     return frame
+
+
+def filterShit(mask):
+    # filter all colors except with super brightness? (value)
+    light_orange = (0, 0, 0)
+    dark_orange = (255, 255, 250)
+
+    # could also restrict h, v to ~0 (127 in hex)
+
+    hsvMask = cv.cvtColor(mask, cv.COLOR_RGB2HSV)
+    mask = cv.inRange(hsvMask, light_orange, dark_orange)
+    #mask = cv.bitwise_and(rangedMask, rangedMask, mask=hsvMask)
+    return mask
+
+
+def trasholding(mask):
+    # seems to work well, if not much glare
+    ret,thresh1 = cv.threshold(mask,250,255,cv.THRESH_BINARY)
+    return thresh1
 
 
 # from https://stackoverflow.com/questions/39308030/how-do-i-increase-the-contrast-of-an-image-in-python-opencv

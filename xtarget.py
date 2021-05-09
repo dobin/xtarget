@@ -59,7 +59,7 @@ def testcase(filename):
 def writeVideoInfo(filename):
     print("Analyzing file: " + filename)
     lazer = Lazer(showVid=False)
-    lazer.initFile("tests/" + filename + ".mp4")
+    lazer.initFile(filename)
 
     while True:
         hasFrame = lazer.nextFrame()
@@ -88,7 +88,8 @@ def analyzeVideo(filename):
     while True:
         hasFrame = lazer.nextFrame()
         if not hasFrame:
-            break
+            lazer.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
+            continue
 
         # find contours and visualize it in the main frame
         contours = lazer.getContours()
@@ -105,13 +106,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-v", "--video", help="video", action='store_true')
     ap.add_argument("-t", "--test", help="test", action='store_true')
+    ap.add_argument("-w", "--write", help="write", action='store_true')
+    ap.add_argument("-f", "--file", help="file", type=str)
     args = ap.parse_args()
 
+    filename = args.file
     if args.video:
-        analyzeVideo('tests/test2.mp4')
+        analyzeVideo(filename)
     elif args.test:
         doTests()
+    elif args.write:
+        writeVideoInfo(filename)
 
+writeVideoInfo
 
 if __name__ == "__main__":
     main()
