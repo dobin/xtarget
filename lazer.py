@@ -55,10 +55,10 @@ def findContours(mask, minRadius=5):
             #print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
-            recordedHit.x = x
-            recordedHit.y = y
+            recordedHit.x = int(x)
+            recordedHit.y = int(y)
             recordedHit.center = center
-            recordedHit.radius = radius
+            recordedHit.radius = int(radius)
             res.append(recordedHit)
         else:
             #print("Too small: " + str(radius))
@@ -130,6 +130,16 @@ class Lazer(object):
         self.minRadius = 5
         self.thresh = 14
 
+        self.doDenoise = True
+        self.doSharpen = True
+
+        self.init()
+
+
+    def init(self):
+        self.hits = []
+        self.lastFoundFrameNr = 0
+
 
     def initFile(self, filename):
         if not os.path.isfile(filename):
@@ -195,6 +205,8 @@ class Lazer(object):
         isTrue, self.frame = self.capture.read()
         if not isTrue:
             if self.endless:
+                self.init()
+                self.hits = []
                 self.setFrame(0)
                 isTrue, self.frame = self.capture.read()
                 
@@ -221,11 +233,13 @@ class Lazer(object):
 
         # Mask: grey
         self.mask = toGrey(self.frame)
-        self.mask = self.multiframeDenoise(self.mask)
+        if self.doDenoise:
+            self.mask = self.multiframeDenoise(self.mask)
 
         # Mask: make it a bit sharper
         #self.mask = sharpoon(self.mask)
-        self.mask = self.sharpen(self.mask)
+        if self.doSharpen:
+            self.mask = self.sharpen(self.mask)
         
         #self.mask = trasholding(self.mask)
         self.mask = self.masking(self.mask)
@@ -311,6 +325,7 @@ class Lazer(object):
 
                 #cv.circle(self.diff, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
                 #cv.circle(self.diff, recordedHit.center, 5, (0, 250, 50), -1)
+                self.hits.append(recordedHit)
 
                 if self.saveHits:
                     self.saveCurrentFrame()
@@ -357,6 +372,36 @@ class Lazer(object):
 
 
     def displayFrame(self):
+        o = 300
+
+        color = (255, 255, 255)
+        s = 'Frame: '+ str(self.frameNr)
+        cv.putText(self.frame, s, (0,0+30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        s= "Tresh: " + str(self.thresh)
+        cv.putText(self.frame, s, (o*1,0+30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+
+        s = "Denoise: " + str(self.doDenoise)
+        cv.putText(self.frame, s, (0+(o*0),0+60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        s= "Sharpen: " + str(self.doSharpen)
+        cv.putText(self.frame, s, (o*1,0+60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+
+        s = "Mode: "
+
+        for idx, hit in enumerate(self.hits): 
+            s = str(idx) + ": " + str(hit.x) + "/" + str(hit.y) + " r:" + str(hit.radius)
+            if idx == 0:
+                color = (0, 200, 0)
+            elif idx == 1:
+                color = (0, 100, 240)
+            elif idx == 2:
+                color = (150, 0, 200)
+            else:
+                color = (0, 170, 200)
+
+            cv.putText(self.frame, s, (0,0+120+(30*idx)), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
+            cv.circle(self.frame, (hit.x, hit.y), 10, color, -1)
+
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
         if self.diff is not None:

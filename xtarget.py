@@ -45,7 +45,7 @@ def doTestsQuick():
 
 def testcaseQuick(filename, showVid=False): 
     print("Test file: " + filename)
-    lazer = Lazer(showVid=showVid, showGlare=False, saveFrames=False)
+    lazer = Lazer(showVid=showVid, showGlare=False, saveFrames=False, saveHits=False)
     
     # get all testcases to check if all triggered
     yamlFilenameList = glob.glob('tests/' + filename + "_*.yaml")
@@ -224,7 +224,7 @@ def analyzeVideo(filename, saveFrames=False, saveHits=False):
 
 def showFrame(filename, frameNr):
     print("Analyzing file: " + filename)
-    lazer = Lazer(showVid=True, showGlare=False)
+    lazer = Lazer(showVid=True, showGlare=True)
     lazer.initFile(filename)
 
     cv.namedWindow('Video') 
