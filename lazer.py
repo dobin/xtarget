@@ -28,7 +28,7 @@ class RecordedHit(object):
 
 
 # from ball_tracking.py
-def findContours(mask):
+def findContours(mask, minRadius=5):
     res = []
 
     # find contours in the mask and initialize the current
@@ -51,7 +51,7 @@ def findContours(mask):
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
         # only proceed if the radius meets a minimum size
-        if radius > 5:  # orig: 10, for most: 5
+        if radius > minRadius:  # orig: 10, for most: 5
             #print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
@@ -127,6 +127,9 @@ class Lazer(object):
 
         self.q = deque(maxlen=3)
 
+        self.minRadius = 5
+        self.thresh = 14
+
 
     def initFile(self, filename):
         if not os.path.isfile(filename):
@@ -142,10 +145,14 @@ class Lazer(object):
             print("Has croppings...")
             with open(vidYaml) as file:
                 vidYamlData = yaml.load(file, Loader=yaml.FullLoader)
-                self.image_coordinates = []
-                self.image_coordinates.append((vidYamlData['x1'], vidYamlData['y1']))
-                self.image_coordinates.append((vidYamlData['x2'], vidYamlData['y2']))
-                self.selected_ROI = True
+                if 'x1' in vidYamlData:
+                    self.image_coordinates = []
+                    self.image_coordinates.append((vidYamlData['x1'], vidYamlData['y1']))
+                    self.image_coordinates.append((vidYamlData['x2'], vidYamlData['y2']))
+                    self.selected_ROI = True
+                if 'thresh' in vidYamlData:
+                    self.thresh = vidYamlData['thresh']
+
 
 
     def multiframeDenoise(self, mask):
@@ -212,9 +219,11 @@ class Lazer(object):
         self.mask = self.multiframeDenoise(self.mask)
 
         # Mask: make it a bit sharper
-        self.mask = sharpoon(self.mask)
+        #self.mask = sharpoon(self.mask)
+        self.mask = self.sharpen(self.mask)
         
-        self.mask = trasholding(self.mask)
+        #self.mask = trasholding(self.mask)
+        self.mask = self.masking(self.mask)
         
         # Mask: force super low brightness high contrast
         #self.mask = apply_brightness_contrast(self.mask, -126, 115)
@@ -234,27 +243,54 @@ class Lazer(object):
         return True
 
 
+    def sharpen(self, frame):
+        # Guassian Blur
+        #frame = cv.GaussianBlur(frame, (3,3), cv.BORDER_DEFAULT)
+
+        # median
+        # TEST: Works for most
+        frame = cv.medianBlur(frame,5)
+
+        # simple
+        # TEST: 
+        #frame = cv.blur(frame,(5,5))
+
+        # Dilating / blur=
+        #frame = cv.dilate(frame, (7,7), iterations=3)
+
+        # Eroding / shapren?
+        frame = cv.erode(frame, (7,7), iterations=3)
+
+        return frame
+
+
+    def masking(self, mask):
+        ret,thresh1 = cv.threshold(mask, 255-self.thresh, 255, cv.THRESH_BINARY)
+        return thresh1
+
+
     def saveCurrentFrame(self):
         cv.imwrite(self.filename + "." + str(self.frameNr) + '.hit.frame.jpg' , self.frame)
         cv.imwrite(self.filename + "." + str(self.frameNr) + '.hit.mask.jpg' , self.mask)
         #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
-    def getContours(self, addIndicator=True):
-        # wait a bit between detections
-        if (self.frameNr - self.lastFoundFrameNr) < self.graceTime:
-            return []
+    def getContours(self, addIndicator=True, staticImage=False):
+        if not staticImage:
+            # wait a bit between detections
+            if (self.frameNr - self.lastFoundFrameNr) < self.graceTime:
+                return []
 
-        # check if there is any change at all
-        # if no change, do not attempt to find contours. 
-        # this can save processing power
-        if frameIdentical(self.mask, self.previousMask):
-            return []
+            # check if there is any change at all
+            # if no change, do not attempt to find contours. 
+            # this can save processing power
+            if frameIdentical(self.mask, self.previousMask):
+                return []
 
-        recordedHits = findContours(self.mask)
+        recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.frameNr
-            print(" --> Found hit at frame #" + str(self.frameNr))
+            print(" --> Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
 

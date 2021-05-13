@@ -10,18 +10,35 @@ import yaml
 import argparse
 from lazer import RecordedHit, Lazer
 import glob
-
+import time
 
 def doTests():
     # all recorded with surface book front camera 30fps if not stated otherwise
-    testcase("test3")   # room 1
-    testcase("test11")  # room 2
-    testcase("test12")  # room 3
-    testcase("test13")  # room 4
-    testcase("test20-far")  # far away, sunny
-    testcase("test21")  # far away, dark
-    testcase("test22")  # oneplus 8 pro phone cam, 60fps, far, dark
-    #testcase("test23")  # oneplus 8 pro phone cam, 240fps, far, dark
+    tests = [
+        'test3',        # room 1
+        'test4_floor',  # room 1 on the floor with reflections (glare)
+        'test11',       # room 2
+        'test12',       # room 3
+        'test13',       # room 4
+        'test20-far',   # far away, sunny
+        'test21',       # far away, dark
+        'test22',       # oneplus 8 pro phone cam, 60fps, far, dark
+    ]
+    results = []
+
+    for test in tests: 
+        start = time.process_time()
+        frameCnt = testcase(test)
+        end = time.process_time()
+        res = {
+            'test': test,
+            'time': end - start,
+            'frames': frameCnt
+        }
+        results.append(res)
+
+    for result in results:
+        print("FPS: " + result['test'] + ": " + str( int(result['frames'] / result['time']) ))
 
 
 def testcase(filename):
@@ -75,6 +92,7 @@ def testcase(filename):
         print("Error: Following dots were not detected: " + str(yamlFilenameList))
 
     lazer.release()
+    return lazer.frameNr
 
 
 def writeVideoInfo(filename):
@@ -136,14 +154,14 @@ def analyzeVideo(filename, saveFrames=False, saveHits=False):
 
 def showFrame(filename, frameNr):
     print("Analyzing file: " + filename)
-    lazer = Lazer(showVid=True)
+    lazer = Lazer(showVid=True, showGlare=False)
     lazer.initFile(filename)
 
     cv.namedWindow('Video')  
-    lazer.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr-1)
+    lazer.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
     hasFrame = lazer.nextFrame()
 
-    contours = lazer.getContours()
+    contours = lazer.getContours(staticImage=True)
     lazer.displayFrame()
 
     key = cv.waitKey(0)
@@ -159,11 +177,14 @@ def main():
     ap.add_argument("-f", "--file", help="file", type=str)
     ap.add_argument("-n", "--nr", help="frame nr", type=int)
 
+    ap.add_argument("--saveHits", action='store_true', default=False)
+    ap.add_argument("--saveFrames", action='store_true', default=False)
+
     args = ap.parse_args()
 
     filename = args.file
     if args.video:
-        analyzeVideo(filename, saveFrames=False, saveHits=True)
+        analyzeVideo(filename, saveFrames=args.saveFrames, saveHits=args.saveHits)
     elif args.test:
         doTests()
     elif args.write:

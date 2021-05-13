@@ -41,11 +41,11 @@ def sharpoon(frame):
 
     # median
     # TEST: Works for most
-    #frame = cv.medianBlur(frame,5)
+    frame = cv.medianBlur(frame,5)
 
     # simple
     # TEST: 
-    frame = cv.blur(frame,(5,5))
+    #frame = cv.blur(frame,(5,5))
 
     # Dilating / blur=
     #frame = cv.dilate(frame, (7,7), iterations=3)
@@ -72,7 +72,7 @@ def filterShit(mask):
 def trasholding(mask):
     # seems to work well, if not much glare
     #ret,thresh1 = cv.threshold(mask,240,255,cv.THRESH_BINARY)
-    ret,thresh1 = cv.threshold(mask,250,255,cv.THRESH_BINARY)
+    ret,thresh1 = cv.threshold(mask,241,255,cv.THRESH_BINARY)
     return thresh1
 
 
