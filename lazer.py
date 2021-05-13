@@ -183,6 +183,11 @@ class Lazer(object):
         return mask
 
 
+    def setFrame(self, frameNr):
+        self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
+        self.frameNr = frameNr-1
+
+
     def nextFrame(self):
         self.frameNr += 1
         self.previousMask = self.mask
@@ -190,9 +195,9 @@ class Lazer(object):
         isTrue, self.frame = self.capture.read()
         if not isTrue:
             if self.endless:
-                self.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
+                self.setFrame(0)
                 isTrue, self.frame = self.capture.read()
-                self.frameNr = 0
+                
             else:
                 return False
 
