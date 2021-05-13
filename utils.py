@@ -36,7 +36,16 @@ def frameIdentical(image1, image2):
 # - only erode(7, 7) on frame: nearly makes random glare go away, PASS
 # - blur(3, 3) then erode(7,7) PASS
 def sharpoon(frame):
+    # Guassian Blur
     #frame = cv.GaussianBlur(frame, (3,3), cv.BORDER_DEFAULT)
+
+    # median
+    # TEST: Works for most
+    #frame = cv.medianBlur(frame,5)
+
+    # simple
+    # TEST: 
+    frame = cv.blur(frame,(5,5))
 
     # Dilating / blur=
     #frame = cv.dilate(frame, (7,7), iterations=3)
@@ -62,6 +71,7 @@ def filterShit(mask):
 
 def trasholding(mask):
     # seems to work well, if not much glare
+    #ret,thresh1 = cv.threshold(mask,240,255,cv.THRESH_BINARY)
     ret,thresh1 = cv.threshold(mask,250,255,cv.THRESH_BINARY)
     return thresh1
 

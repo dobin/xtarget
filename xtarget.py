@@ -92,33 +92,29 @@ def writeVideoInfo(filename):
         for recordedHit in recordedHits:
             filenameBase = os.path.splitext(filename)[0]
             # write all the pics
-            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_cont.jpg", lazer.mask)
+            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_mask.jpg", lazer.mask)
             cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_frame.jpg", lazer.frame)
-            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_diff.jpg", lazer.diff)
+            #cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_diff.jpg", lazer.diff)
             with open(filenameBase + "_" + str(lazer.frameNr) + "_info.yaml", 'w') as outfile:
                 yaml.dump(recordedHit.toDict(), outfile)
 
     lazer.release()
 
 
-def analyzeVideo(filename):
+def analyzeVideo(filename, saveFrames=False, saveHits=False):
     print("Analyzing file: " + filename)
-    lazer = Lazer(showVid=True)
+    lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
     lazer.initFile(filename)
 
     cv.namedWindow('Video')
     while True:
         hasFrame = lazer.nextFrame()
         if not hasFrame:
-            lazer.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
-            continue
+            break
 
         # find contours and visualize it in the main frame
         contours = lazer.getContours()
         lazer.displayFrame()
-
-        if False:
-            cv.imwrite('test20-far.' + str(lazer.frameNr) + '.frame.jpg' , lazer.frame)
 
         # input
         key = cv.waitKey(2)
@@ -135,6 +131,22 @@ def analyzeVideo(filename):
             break
 
     lazer.release()
+    print("")
+
+
+def showFrame(filename, frameNr):
+    print("Analyzing file: " + filename)
+    lazer = Lazer(showVid=True)
+    lazer.initFile(filename)
+
+    cv.namedWindow('Video')  
+    lazer.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr-1)
+    hasFrame = lazer.nextFrame()
+
+    contours = lazer.getContours()
+    lazer.displayFrame()
+
+    key = cv.waitKey(0)
 
 
 def main():
@@ -142,16 +154,22 @@ def main():
     ap.add_argument("-v", "--video", help="video", action='store_true')
     ap.add_argument("-t", "--test", help="test", action='store_true')
     ap.add_argument("-w", "--write", help="write", action='store_true')
+    ap.add_argument("-s", "--showframe", help="showframe", action='store_true')
+
     ap.add_argument("-f", "--file", help="file", type=str)
+    ap.add_argument("-n", "--nr", help="frame nr", type=int)
+
     args = ap.parse_args()
 
     filename = args.file
     if args.video:
-        analyzeVideo(filename)
+        analyzeVideo(filename, saveFrames=False, saveHits=True)
     elif args.test:
         doTests()
     elif args.write:
         writeVideoInfo(filename)
+    elif args.showframe:
+        showFrame(filename, args.nr)
 
 writeVideoInfo
 

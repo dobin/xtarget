@@ -51,7 +51,7 @@ def findContours(mask):
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
         # only proceed if the radius meets a minimum size
-        if radius > 10:
+        if radius > 5:  # orig: 10, for most: 5
             #print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
@@ -60,6 +60,9 @@ def findContours(mask):
             recordedHit.center = center
             recordedHit.radius = radius
             res.append(recordedHit)
+        else:
+            #print("Too small: " + str(radius))
+            pass
 
     return res
 
@@ -98,7 +101,7 @@ def diff(mask, previousMask, frame):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid, showGlare=True):
+    def __init__(self, showVid, showGlare=True, saveFrames=False, saveHits=False, endless=False):
         self.capture = None
         self.frame = None
         self.mask = None
@@ -110,9 +113,19 @@ class Lazer(object):
         self.showGlare = showGlare
         self.graceTime = 10  # How many frames between detections
 
+        self.saveFrames = saveFrames
+        self.saveHits = saveHits
+        self.filename = None
+
         # for extract_coordinates_callback
         self.image_coordinates = None
         self.selected_ROI = False
+
+        # some options
+        self.enableDiff = False
+        self.endless = endless
+
+        self.q = deque(maxlen=3)
 
 
     def initFile(self, filename):
@@ -120,6 +133,7 @@ class Lazer(object):
             print("File not found")
             return
 
+        self.filename = filename
         self.capture = cv.VideoCapture(filename)
 
         # check for crop settings for file
@@ -134,13 +148,46 @@ class Lazer(object):
                 self.selected_ROI = True
 
 
+    def multiframeDenoise(self, mask):
+        self.q.appendleft(mask)
+        #print("Len: " + str(len(self.q)))
+
+        x = 3
+        if x == 1:
+            # use previous frame to average it
+            if len(self.q) != 3:
+                return mask
+
+            q = [
+                self.q[1],
+                self.q[0],
+                self.q[1]
+            ]
+            mask = cv.fastNlMeansDenoisingMulti(q, 1, 1)
+
+
+        if x == 2:
+            # only the frame itself
+            mask = cv.fastNlMeansDenoising(mask)
+
+        if x == 3:
+            pass
+
+        return mask
+
+
     def nextFrame(self):
         self.frameNr += 1
         self.previousMask = self.mask
 
         isTrue, self.frame = self.capture.read()
         if not isTrue:
-            return False
+            if self.endless:
+                self.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
+                isTrue, self.frame = self.capture.read()
+                self.frameNr = 0
+            else:
+                return False
 
         # Frame: rescale it
         self.frame = rescaleFrame(self.frame)
@@ -162,20 +209,35 @@ class Lazer(object):
 
         # Mask: grey
         self.mask = toGrey(self.frame)
-
-        #self.mask = sharpoon(self.mask)
-        self.mask = trasholding(self.mask)
+        self.mask = self.multiframeDenoise(self.mask)
 
         # Mask: make it a bit sharper
+        self.mask = sharpoon(self.mask)
+        
+        self.mask = trasholding(self.mask)
         
         # Mask: force super low brightness high contrast
         #self.mask = apply_brightness_contrast(self.mask, -126, 115)
         #orig: mask = apply_brightness_contrast(mask, -127, 116)
         
+        # also calulate the diff
+        if self.enableDiff and self.previousMask is not None:
+            if self.mask.shape == self.previousMask.shape:
+                self.diff = diff(self.mask, self.previousMask, self.frame)
+
+        if self.saveFrames:
+            self.saveCurrentFrame()
+
         if self.showGlare:
             self.checkGlare()
 
         return True
+
+
+    def saveCurrentFrame(self):
+        cv.imwrite(self.filename + "." + str(self.frameNr) + '.hit.frame.jpg' , self.frame)
+        cv.imwrite(self.filename + "." + str(self.frameNr) + '.hit.mask.jpg' , self.mask)
+        #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
     def getContours(self, addIndicator=True):
@@ -192,31 +254,25 @@ class Lazer(object):
         recordedHits = findContours(self.mask)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.frameNr
-            print("--> Found hit")
+            print(" --> Found hit at frame #" + str(self.frameNr))
         else:
             return []
 
-        # also calulate the diff
-        if self.mask.shape == self.previousMask.shape:
-            self.diff = diff(self.mask, self.previousMask, self.frame)
-        
         # augment mask,frame,diff with indicators?
         if addIndicator: # and not self.showGlare:
             for recordedHit in recordedHits:
                 # add visual indicators to both frame and mask
-                cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
-                cv.circle(self.frame, recordedHit.center, 5, (0, 255, 0), -1)
+                cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
+                cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
-                cv.circle(self.mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
-                cv.circle(self.mask, recordedHit.center, 5, (0, 255, 0), -1)
+                #cv.circle(self.mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
+                #cv.circle(self.mask, recordedHit.center, 5, (0, 250, 50), -1)
 
-                cv.circle(self.diff, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (255, 0, 0), 2)
-                cv.circle(self.diff, recordedHit.center, 5, (0, 255, 0), -1)
+                #cv.circle(self.diff, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
+                #cv.circle(self.diff, recordedHit.center, 5, (0, 250, 50), -1)
 
-                if False:
-                    cv.imwrite("xxx_" + str(self.frameNr) + "frame.jpg", self.frame)
-                    cv.imwrite("xxx_" + str(self.frameNr) + "mask.jpg", self.mask)
-                    cv.imwrite("xxx_" + str(self.frameNr) + "diff.jpg", self.diff)
+                if self.saveHits:
+                    self.saveCurrentFrame()
 
         return recordedHits
 
@@ -270,3 +326,4 @@ class Lazer(object):
         self.capture.release()
         if self.showVid:
             cv.destroyAllWindows()
+        print("")
