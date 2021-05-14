@@ -147,6 +147,7 @@ class Lazer(object):
 
     def init(self):
         self.glareMeter = 0
+        self.glareMeterAvg = 0
         self.hits = []
         self.lastFoundFrameNr = 0
 
@@ -370,10 +371,12 @@ class Lazer(object):
             #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
         if len(cnts) > 0:
-            if self.glareMeter < 32:
-                self.glareMeter += 2
+            if self.glareMeter < 60:  # 30 is typical fps, so 1s
+                self.glareMeter += 4
         else:
-            self.glareMeter -= 1
+            if self.glareMeter > 0:
+                self.glareMeter -= 1
+        self.glareMeterAvg = int(self.glareMeterAvg + self.glareMeter) >> 1
 
 
     def displayFrame(self):
@@ -382,7 +385,7 @@ class Lazer(object):
         color = (255, 255, 255)
         s = 'Frame: '+ str(self.frameNr)
         cv.putText(self.frame, s, (0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-        s= "Tresh: " + str(self.thresh) + "  Glare: " + str(self.glareMeter)
+        s= "Tresh: " + str(self.thresh) + "  Glare: " + str(self.glareMeterAvg)
         cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         s = "Denoise: " + str(self.doDenoise)
@@ -391,7 +394,7 @@ class Lazer(object):
         cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         s = "Mode: " + str(self.mode.name)
-        cv.putText(self.frame, s, (o*1,0), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+        cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         for idx, hit in enumerate(self.hits): 
             s = str(idx) + ": " + str(hit.x) + "/" + str(hit.y) + " r:" + str(hit.radius)
