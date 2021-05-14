@@ -189,37 +189,66 @@ def writeVideoInfo(filename):
     lazer.release()
 
 
-def analyzeVideo(filename, saveFrames=False, saveHits=False):
-    print("Analyzing file: " + filename)
-    lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
-    lazer.initFile(filename)
+class Playback(object):
+    def __init__(self):
+        # for extract_coordinates_callback
+        self.image_coordinates = None
+        self.selected_ROI = False
+        self.lazer = None
+        
 
-    cv.namedWindow('Video')
-    while True:
-        hasFrame = lazer.nextFrame()
-        if not hasFrame:
-            break
+    def extract_coordinates_callback(self, event, x, y, flags, parameters):
+        # Record starting (x,y) coordinates on left mouse button click
+        if event == cv.EVENT_LBUTTONDOWN:
+            self.image_coordinates = [(x,y)]
 
-        # find contours and visualize it in the main frame
-        contours = lazer.getContours()
-        lazer.displayFrame()
+        # Record ending (x,y) coordintes on left mouse bottom release
+        elif event == cv.EVENT_LBUTTONUP:
+            self.image_coordinates.append((x,y))
+            self.selected_ROI = True
 
-        # input
-        key = cv.waitKey(2)
-        if key == ord('c'):  # Crop image
-            cv.setMouseCallback('Video', lazer.extract_coordinates_callback)
-            while True:
-                key = cv.waitKey(2)
-                lazer.displayFrame()
-                #cv.imshow('image', staticROI.clone)
+            # Draw rectangle around ROI
+            cv.rectangle(self.lazer.frame, self.image_coordinates[0], self.image_coordinates[1], (0,255,0), 2)
+            self.lazer.crop = self.image_coordinates
+            print("ROI: " + str(self.image_coordinates))
 
-                if key == ord('c'):
-                    break
-        if key == ord('q'):
-            break
+        # Clear drawing boxes on right mouse button click
+        elif event == cv.EVENT_RBUTTONDOWN:
+            self.selected_ROI = False
 
-    lazer.release()
-    print("")
+
+    def play(self, filename, saveFrames=False, saveHits=False):
+        print("Analyzing file: " + filename)
+        lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
+        self.lazer = lazer
+        lazer.initFile(filename)
+
+        cv.namedWindow('Video')
+        while True:
+            hasFrame = lazer.nextFrame()
+            if not hasFrame:
+                break
+
+            # find contours and visualize it in the main frame
+            contours = lazer.getContours()
+            lazer.displayFrame()
+
+            # input
+            key = cv.waitKey(2)
+            if key == ord('c'):  # Crop image
+                cv.setMouseCallback('Video', self.extract_coordinates_callback)
+                while True:
+                    key = cv.waitKey(2)
+                    lazer.displayFrame()
+                    #cv.imshow('image', staticROI.clone)
+
+                    if key == ord('c'):
+                        break
+            if key == ord('q'):
+                break
+
+        lazer.release()
+        print("")
 
 
 def showFrame(filename, frameNr):
@@ -255,7 +284,8 @@ def main():
 
     filename = args.file
     if args.video:
-        analyzeVideo(filename, saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback()
+        playback.play(filename, saveFrames=args.saveFrames, saveHits=args.saveHits)
     elif args.test:
         doTests()
     elif args.testQuick:

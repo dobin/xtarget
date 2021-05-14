@@ -101,7 +101,7 @@ def diff(mask, previousMask, frame):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid, showGlare=True, saveFrames=False, saveHits=False, endless=False):
+    def __init__(self, showVid, crop=None, showGlare=True, saveFrames=False, saveHits=False, endless=False):
         self.capture = None
         self.frame = None
         self.mask = None
@@ -112,26 +112,25 @@ class Lazer(object):
         self.showVid = showVid
         self.showGlare = showGlare
         self.graceTime = 10  # How many frames between detections
+        self.filename = None
+        self.crop = crop
 
+        # debug options
         self.saveFrames = saveFrames
         self.saveHits = saveHits
-        self.filename = None
 
-        # for extract_coordinates_callback
-        self.image_coordinates = None
-        self.selected_ROI = False
-
-        # some options
-        self.enableDiff = False
+        # playback options
         self.endless = endless
 
-        self.q = deque(maxlen=3)
-
+        # decoding options
         self.minRadius = 5
         self.thresh = 14
-
         self.doDenoise = True
         self.doSharpen = True
+
+        # to delete
+        self.q = deque(maxlen=3)
+        self.enableDiff = False
 
         self.init()
 
@@ -156,13 +155,11 @@ class Lazer(object):
             with open(vidYaml) as file:
                 vidYamlData = yaml.load(file, Loader=yaml.FullLoader)
                 if 'x1' in vidYamlData:
-                    self.image_coordinates = []
-                    self.image_coordinates.append((vidYamlData['x1'], vidYamlData['y1']))
-                    self.image_coordinates.append((vidYamlData['x2'], vidYamlData['y2']))
-                    self.selected_ROI = True
+                    self.crop = []
+                    self.crop.append((vidYamlData['x1'], vidYamlData['y1']))
+                    self.crop.append((vidYamlData['x2'], vidYamlData['y2']))
                 if 'thresh' in vidYamlData:
                     self.thresh = vidYamlData['thresh']
-
 
 
     def multiframeDenoise(self, mask):
@@ -217,11 +214,11 @@ class Lazer(object):
         self.frame = rescaleFrame(self.frame)
 
         # Crop if user wants to
-        if self.selected_ROI:
-            x1 = self.image_coordinates[0][0]
-            y1 = self.image_coordinates[0][1]
-            x2 = self.image_coordinates[1][0]
-            y2 = self.image_coordinates[1][1]
+        if self.crop != None:
+            x1 = self.crop[0][0]
+            y1 = self.crop[0][1]
+            x2 = self.crop[1][0]
+            y2 = self.crop[1][1]
             self.frame = self.frame[y1:y2, x1:x2]
 
         # we have three posibilities to make a mask: 
@@ -350,26 +347,6 @@ class Lazer(object):
             (x, y, w, h) = cv.boundingRect(c)
             cv.rectangle(self.frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
             #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-    
-    def extract_coordinates_callback(self, event, x, y, flags, parameters):
-        # Record starting (x,y) coordinates on left mouse button click
-        if event == cv.EVENT_LBUTTONDOWN:
-            self.image_coordinates = [(x,y)]
-
-        # Record ending (x,y) coordintes on left mouse bottom release
-        elif event == cv.EVENT_LBUTTONUP:
-            self.image_coordinates.append((x,y))
-            self.selected_ROI = True
-
-            # Draw rectangle around ROI
-            cv.rectangle(self.frame, self.image_coordinates[0], self.image_coordinates[1], (0,255,0), 2)
-            print("ROI: " + str(self.image_coordinates))
-
-        # Clear drawing boxes on right mouse button click
-        elif event == cv.EVENT_RBUTTONDOWN:
-            self.selected_ROI = False
-
 
     def displayFrame(self):
         o = 300
