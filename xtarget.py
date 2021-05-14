@@ -196,6 +196,7 @@ class Playback(object):
         self.selected_ROI = False
         self.lazer = None
         
+        self.isPaused = False
 
     def extract_coordinates_callback(self, event, x, y, flags, parameters):
         # Record starting (x,y) coordinates on left mouse button click
@@ -225,16 +226,18 @@ class Playback(object):
 
         cv.namedWindow('Video')
         while True:
-            hasFrame = lazer.nextFrame()
-            if not hasFrame:
-                break
+            lazer.nextFrame()
 
             # find contours and visualize it in the main frame
             contours = lazer.getContours()
             lazer.displayFrame()
 
             # input
-            key = cv.waitKey(2)
+            if self.isPaused:
+                key = cv.waitKey(0)
+            else:
+                key = cv.waitKey(2)
+
             if key == ord('c'):  # Crop image
                 cv.setMouseCallback('Video', self.extract_coordinates_callback)
                 while True:
@@ -244,6 +247,30 @@ class Playback(object):
 
                     if key == ord('c'):
                         break
+
+            elif key == ord('d'): # back
+                lazer.setFrame(lazer.frameNr-1)
+                lazer.init()
+            elif key == ord('f'): # forward
+                #lazer.nextFrame()
+                pass
+            elif key == ord(' '):  # pause
+                self.isPaused = not self.isPaused
+                lazer.init()
+
+            if key == ord('s'):  # save frame
+                if self.isPaused:
+                    lazer.setFrame(lazer.frameNr)
+                lazer.saveCurrentFrame()
+            if key == ord('j'):  # decrease threshhold
+                if self.isPaused:
+                    lazer.setFrame(lazer.frameNr)
+                lazer.thresh -= 1
+            if key == ord('k'):  # increase threshhold
+                if self.isPaused:
+                    lazer.setFrame(lazer.frameNr)
+                lazer.thresh += 1
+
             if key == ord('q'):
                 break
 
