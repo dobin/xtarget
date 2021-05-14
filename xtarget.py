@@ -8,10 +8,9 @@ from utils import *
 from pathlib import Path
 import yaml
 import argparse
-from lazer import RecordedHit, Lazer
+from lazer import RecordedHit, Lazer, Mode
 import glob
 import time
-
 
 # all recorded with surface book front camera 30fps if not stated otherwise
 tests = [
@@ -198,6 +197,7 @@ class Playback(object):
         
         self.isPaused = False
 
+
     def extract_coordinates_callback(self, event, x, y, flags, parameters):
         # Record starting (x,y) coordinates on left mouse button click
         if event == cv.EVENT_LBUTTONDOWN:
@@ -248,8 +248,17 @@ class Playback(object):
                     if key == ord('c'):
                         break
 
+            if key == ord('m'):
+                if lazer.mode == Mode.intro:
+                    lazer.changeMode(Mode.main)
+                elif lazer.mode == Mode.main:
+                    lazer.changeMode(Mode.intro)
+
             elif key == ord('d'): # back
                 lazer.setFrame(lazer.frameNr-1)
+                lazer.init()
+            elif key == ord('e'): # back 10
+                lazer.setFrame(lazer.frameNr-11)
                 lazer.init()
             elif key == ord('f'): # forward
                 #lazer.nextFrame()

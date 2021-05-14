@@ -7,7 +7,7 @@ import os.path
 from utils import *
 from pathlib import Path
 import yaml
-import argparse
+from enum import Enum
 
 
 class RecordedHit(object):
@@ -94,6 +94,12 @@ def diff(mask, previousMask, frame):
     return diff
 
 
+
+class Mode(Enum):
+    intro = 1
+    main = 2
+
+
 # Order:
 # - init*
 # - nextFrame()
@@ -114,6 +120,8 @@ class Lazer(object):
         self.graceTime = 10  # How many frames between detections
         self.filename = None
         self.crop = crop
+        self.width = None
+        self.height = None
 
         # debug options
         self.saveFrames = saveFrames
@@ -128,6 +136,8 @@ class Lazer(object):
         self.doDenoise = True
         self.doSharpen = True
 
+        self.mode = Mode.intro
+
         # to delete
         self.q = deque(maxlen=3)
         self.enableDiff = False
@@ -136,8 +146,17 @@ class Lazer(object):
 
 
     def init(self):
+        self.glareMeter = 0
         self.hits = []
         self.lastFoundFrameNr = 0
+
+
+    def changeMode(self, mode):
+        self.mode = mode
+        if mode == Mode.main:
+            self.showGlare = False
+        elif mode == Mode.intro:
+            self.showGlare = True
 
 
     def initFile(self, filename):
@@ -160,6 +179,9 @@ class Lazer(object):
                     self.crop.append((vidYamlData['x2'], vidYamlData['y2']))
                 if 'thresh' in vidYamlData:
                     self.thresh = vidYamlData['thresh']
+
+        self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
+        self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
 
 
     def multiframeDenoise(self, mask):
@@ -291,7 +313,7 @@ class Lazer(object):
         #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
-    def getContours(self, addIndicator=True, staticImage=False):
+    def getContours(self, staticImage=False):
         if not staticImage:
             # wait a bit between detections
             if (self.frameNr - self.lastFoundFrameNr) < self.graceTime:
@@ -311,9 +333,8 @@ class Lazer(object):
             return []
 
         # augment mask,frame,diff with indicators?
-        if addIndicator: # and not self.showGlare:
+        if staticImage or self.mode == Mode.main: # and not self.showGlare:
             for recordedHit in recordedHits:
-                # add visual indicators to both frame and mask
                 cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
                 cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
@@ -348,21 +369,29 @@ class Lazer(object):
             cv.rectangle(self.frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
             #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
+        if len(cnts) > 0:
+            if self.glareMeter < 32:
+                self.glareMeter += 2
+        else:
+            self.glareMeter -= 1
+
+
     def displayFrame(self):
         o = 300
 
         color = (255, 255, 255)
         s = 'Frame: '+ str(self.frameNr)
-        cv.putText(self.frame, s, (0,0+30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-        s= "Tresh: " + str(self.thresh)
-        cv.putText(self.frame, s, (o*1,0+30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        cv.putText(self.frame, s, (0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        s= "Tresh: " + str(self.thresh) + "  Glare: " + str(self.glareMeter)
+        cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         s = "Denoise: " + str(self.doDenoise)
-        cv.putText(self.frame, s, (0+(o*0),0+60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        cv.putText(self.frame, s, ((o*0),60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
         s= "Sharpen: " + str(self.doSharpen)
-        cv.putText(self.frame, s, (o*1,0+60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+        cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        s = "Mode: "
+        s = "Mode: " + str(self.mode.name)
+        cv.putText(self.frame, s, (o*1,0), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         for idx, hit in enumerate(self.hits): 
             s = str(idx) + ": " + str(hit.x) + "/" + str(hit.y) + " r:" + str(hit.radius)
@@ -375,9 +404,17 @@ class Lazer(object):
             else:
                 color = (0, 170, 200)
 
-            cv.putText(self.frame, s, (0,0+120+(30*idx)), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv.putText(self.frame, s, (0,0+140+(30*idx)), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
             cv.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
             cv.circle(self.frame, (hit.x, hit.y), 10, color, -1)
+
+        color = (0, 0, 255)
+        if self.mode == Mode.intro:
+            s = "Press m to start"
+            cv.putText(self.frame, s, (self.width >> 1,self.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+        elif self.mode == Mode.main:
+            s = "Press m to stop"
+            cv.putText(self.frame, s, ((self.width >> 1) - 60,self.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
