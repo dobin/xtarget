@@ -385,8 +385,10 @@ class Lazer(object):
         color = (255, 255, 255)
         s = 'Frame: '+ str(self.frameNr)
         cv.putText(self.frame, s, (0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-        s= "Tresh: " + str(self.thresh) + "  Glare: " + str(self.glareMeterAvg)
+        s= "Tresh: " + str(self.thresh) # + "  Glare: " + str(self.glareMeterAvg)
         cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        if self.glareMeterAvg > 0:
+            cv.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
 
         s = "Denoise: " + str(self.doDenoise)
         cv.putText(self.frame, s, ((o*0),60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
