@@ -4,9 +4,12 @@ from collections import deque
 from skimage.metrics import structural_similarity as ssim
 import os.path
 import yaml
+from filevideostream import FileVideoStream
+from webcamvideostream import WebcamVideoStream
 
 from gfxutils import *
 from model import *
+
 
 # from ball_tracking.py
 def findContours(mask, minRadius=5):
@@ -54,7 +57,7 @@ def findContours(mask, minRadius=5):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid, crop=None, showGlare=True, saveFrames=False, saveHits=False, endless=False):
+    def __init__(self, showVid, crop=None, showGlare=True, saveFrames=False, saveHits=False, endless=False, threaded=False):
         self.capture = None
         self.frame = None
         self.mask = None
@@ -92,6 +95,7 @@ class Lazer(object):
         self.q = deque(maxlen=3)
         self.enableDiff = False
 
+        self.threaded = threaded
         self.init()
 
 
@@ -111,7 +115,10 @@ class Lazer(object):
 
 
     def setFrame(self, frameNr):
-        self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
+        if self.threaded:
+            self.capture.stream.set(cv.CAP_PROP_POS_FRAMES, frameNr)
+        else:
+            self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
         self.frameNr = frameNr-1
 
 
@@ -136,7 +143,15 @@ class Lazer(object):
             return
 
         self.filename = filename
-        self.capture = cv.VideoCapture(filename)
+        if self.threaded:
+            #self.capture = WebcamVideoStream(src=filename).start()
+            self.capture = FileVideoStream(filename).start()
+            self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
+            self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
+        else:
+            self.capture = cv.VideoCapture(filename)
+            self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
+            self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
 
         # check for crop settings for file
         vidYaml = filename +'.yaml'
@@ -151,8 +166,6 @@ class Lazer(object):
                 if 'thresh' in vidYamlData:
                     self.thresh = vidYamlData['thresh']
 
-        self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
-        self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
 
 
     def nextFrame(self):
@@ -182,6 +195,7 @@ class Lazer(object):
         # Mask: make it a bit sharper
         if self.doSharpen:
             self.mask = cv.medianBlur(self.mask,5)
+            # self.mask = cv.blur(self.mask,(5,5))
             self.mask = cv.erode(self.mask, (7,7), iterations=3)
         
         # Mask: threshold, throw away all bytes below thresh (binary)
@@ -333,7 +347,11 @@ class Lazer(object):
 
 
     def release(self):
-        self.capture.release()
+        if self.threaded:
+            self.capture.stream.release()
+            self.capture.stop()
+        else:
+            self.capture.release()
         if self.showVid:
             cv.destroyAllWindows()
         print("")
