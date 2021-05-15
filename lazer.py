@@ -103,7 +103,7 @@ class Mode(Enum):
 # Order:
 # - init*
 # - nextFrame()
-# - getContours()
+# - detectAndDrawHits()
 # - displayFrame()
 # - release()
 class Lazer(object):
@@ -218,6 +218,10 @@ class Lazer(object):
         self.frameNr = frameNr-1
 
 
+    def setCrop(self, crop):
+        self.crop = crop
+
+
     def nextFrame(self):
         self.frameNr += 1
         self.previousMask = self.mask
@@ -308,13 +312,19 @@ class Lazer(object):
         return thresh1
 
 
-    def saveCurrentFrame(self):
-        cv.imwrite(self.filename + "." + str(self.frameNr) + '.hit.frame.jpg' , self.frame)
-        cv.imwrite(self.filename + "." + str(self.frameNr) + '.hit.mask.jpg' , self.mask)
+    def saveCurrentFrame(self, epilog=''):
+        fname = self.filename + "." + str(self.frameNr) + '.hit.frame' + epilog + '.jpg'
+        print("Save Frame to: " + fname)
+        cv.imwrite(fname, self.frame)
+
+        fname = self.filename + "." + str(self.frameNr) + '.hit.mask' + epilog + '.jpg' 
+        print("Save Mask to: " + fname)
+        cv.imwrite(fname, self.mask)
+
         #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
-    def getContours(self, staticImage=False):
+    def detectAndDrawHits(self, staticImage=False):
         if not staticImage:
             # wait a bit between detections
             if (self.frameNr - self.lastFoundFrameNr) < self.graceTime:

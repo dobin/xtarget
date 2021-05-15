@@ -59,7 +59,7 @@ def testcaseQuick(filename, showVid=False):
         hasFrame = lazer.nextFrame()
 
         # find contours and visualize it in the main frame
-        recordedHits = lazer.getContours(staticImage=True)
+        recordedHits = lazer.detectAndDrawHits(staticImage=True)
         if len(recordedHits) > 0:
             recordedHit = recordedHits[0]
             print("Checking dot in frame " + str(lazer.frameNr))
@@ -125,7 +125,7 @@ def testcase(filename):
             break
 
         # find contours and visualize it in the main frame
-        recordedHits = lazer.getContours()
+        recordedHits = lazer.detectAndDrawHits()
         if len(recordedHits) > 0:
             recordedHit = recordedHits[0]
             print("Checking dot in frame " + str(lazer.frameNr))
@@ -175,7 +175,7 @@ def writeVideoInfo(filename):
             break
 
         # find contours and visualize it in the main frame
-        recordedHits = lazer.getContours()
+        recordedHits = lazer.detectAndDrawHits()
         for recordedHit in recordedHits:
             filenameBase = os.path.splitext(filename)[0]
             # write all the pics
@@ -191,31 +191,61 @@ def writeVideoInfo(filename):
 class Playback(object):
     def __init__(self):
         # for extract_coordinates_callback
-        self.image_coordinates = None
-        self.selected_ROI = False
         self.lazer = None
         
         self.isPaused = False
+        self.cropModeEnabled = False
+        self.targetModeEnabled = False
+
+        self.initClick()
+
+    def initClick(self):
+        self.trackerLocA = None
+        self.trackerLocB = None
+        self.trackX = 0
+        self.trackY = 0
 
 
-    def extract_coordinates_callback(self, event, x, y, flags, parameters):
-        # Record starting (x,y) coordinates on left mouse button click
-        if event == cv.EVENT_LBUTTONDOWN:
-            self.image_coordinates = [(x,y)]
+    def click_track(self, event, x, y, flags, param):
+        if self.cropModeEnabled or self.targetModeEnabled:
+            if event == cv.EVENT_LBUTTONUP:
+                self.trackerLocB = (x,y)
+                print("Up  : " + str(self.trackerLocB))
+            if event == cv.EVENT_LBUTTONDOWN:
+                self.initClick()
+                self.trackerLocA = (x,y)
+                self.trackX = x
+                self.trackY = y
+                print("Down: " + str(self.trackerLocA))
+            elif event == cv.EVENT_MOUSEMOVE:
+                self.trackX = x
+                self.trackY = y
 
-        # Record ending (x,y) coordintes on left mouse bottom release
-        elif event == cv.EVENT_LBUTTONUP:
-            self.image_coordinates.append((x,y))
-            self.selected_ROI = True
 
-            # Draw rectangle around ROI
-            cv.rectangle(self.lazer.frame, self.image_coordinates[0], self.image_coordinates[1], (0,255,0), 2)
-            self.lazer.crop = self.image_coordinates
-            print("ROI: " + str(self.image_coordinates))
+    def drawTrackings(self):
+        if self.cropModeEnabled and self.trackerLocA != None:
+            if self.trackerLocB == None:
+                cv.rectangle(self.lazer.frame, 
+                    self.trackerLocA, 
+                    (self.trackX, self.trackY), 
+                    (0,255,0), 2)
+            else:
+                cv.rectangle(self.lazer.frame, 
+                    self.trackerLocA, 
+                    self.trackerLocB, 
+                    (0,255,0), 2)
 
-        # Clear drawing boxes on right mouse button click
-        elif event == cv.EVENT_RBUTTONDOWN:
-            self.selected_ROI = False
+        if self.targetModeEnabled and self.trackerLocA != None:
+            if self.trackerLocB == None:
+                center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
+                pt_on_circle = np.array([self.trackX, self.trackY], dtype=np.int64)
+                radius = int(np.linalg.norm(pt_on_circle-center))
+                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
+            else:
+                center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
+                pt_on_circle = np.array([self.trackerLocB[0], self.trackerLocB[1]], dtype=np.int64)
+                radius = int(np.linalg.norm(pt_on_circle-center))
+                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
 
 
     def play(self, filename, saveFrames=False, saveHits=False):
@@ -225,30 +255,36 @@ class Playback(object):
         lazer.initFile(filename)
 
         cv.namedWindow('Video')
-        while True:
-            lazer.nextFrame()
+        cv.setMouseCallback("Video", self.click_track)
 
-            # find contours and visualize it in the main frame
-            contours = lazer.getContours()
+        while True:
+            lazer.nextFrame()  # gets next frame, and creates mask
+
+            lazer.detectAndDrawHits()
+
+            self.drawTrackings()  # needs to be before displayFrame
             lazer.displayFrame()
 
             # input
             if self.isPaused:
-                key = cv.waitKey(0)
+                key = cv.waitKey(0)  # wait forever
             else:
                 key = cv.waitKey(2)
 
             if key == ord('c'):  # Crop image
-                cv.setMouseCallback('Video', self.extract_coordinates_callback)
-                while True:
-                    key = cv.waitKey(2)
-                    lazer.displayFrame()
-                    #cv.imshow('image', staticROI.clone)
+                self.cropModeEnabled = not self.cropModeEnabled
 
-                    if key == ord('c'):
-                        break
+                if not self.cropModeEnabled and self.trackerLocB != None:
+                    crop = [ 
+                            self.trackerLocA,
+                            self.trackerLocB,
+                    ]
+                    self.lazer.setCrop(crop)
 
-            if key == ord('m'):
+            if key == ord('t'):  # Target Mode
+                self.targetModeEnabled = not self.targetModeEnabled
+
+            if key == ord('m'):  # Mode
                 if lazer.mode == Mode.intro:
                     lazer.changeMode(Mode.main)
                 elif lazer.mode == Mode.main:
@@ -270,7 +306,7 @@ class Playback(object):
             if key == ord('s'):  # save frame
                 if self.isPaused:
                     lazer.setFrame(lazer.frameNr)
-                lazer.saveCurrentFrame()
+                lazer.saveCurrentFrame(epilog=".live")
             if key == ord('j'):  # decrease threshhold
                 if self.isPaused:
                     lazer.setFrame(lazer.frameNr)
@@ -296,7 +332,7 @@ def showFrame(filename, frameNr):
     lazer.setFrame(frameNr)
     hasFrame = lazer.nextFrame()
 
-    contours = lazer.getContours(staticImage=True)
+    lazer.detectAndDrawHits(staticImage=True)
     lazer.displayFrame()
 
     key = cv.waitKey(0)
@@ -331,7 +367,6 @@ def main():
     elif args.showframe:
         showFrame(filename, args.nr)
 
-writeVideoInfo
 
 if __name__ == "__main__":
     main()
