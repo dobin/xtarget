@@ -19,13 +19,19 @@ tests = [
 ]
 
 
+def getTime():
+    return time.time()
+    #returm time.process_time()
+    #return time.clock()
+
+
 def doTestsQuick():
     results = []
 
     for test in tests: 
-        start = time.process_time()
+        start = getTime()
         frameCnt = testcaseQuick(test)
-        end = time.process_time()
+        end = getTime()
         res = {
             'test': test,
             'time': end - start,
@@ -77,10 +83,6 @@ def testcaseQuick(filename, showVid=False):
         else:
             print("No hits :(")
 
-        if showVid:
-            lazer.displayFrame()
-            key = cv.waitKey(0)
-
         lazer.release()
 
     return 0
@@ -90,9 +92,10 @@ def doTests():
     results = []
 
     for test in tests: 
-        start = time.process_time()
+        start = getTime()
         frameCnt = testcase(test)
-        end = time.process_time()
+        end = getTime()
+        
         res = {
             'test': test,
             'time': end - start,
@@ -106,7 +109,7 @@ def doTests():
 
 def testcase(filename):
     print("Test file: " + filename)
-    lazer = Lazer(showVid=False, showGlare=False)
+    lazer = Lazer(showVid=False, showGlare=False, threaded=True)
     lazer.initFile("tests/" + filename + ".mp4")
 
     # get all testcases to check if all triggered
