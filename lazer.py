@@ -4,8 +4,8 @@ from collections import deque
 from skimage.metrics import structural_similarity as ssim
 import os.path
 import yaml
-import numpy as np
 
+from gfxutils import *
 from model import *
 
 # from ball_tracking.py
@@ -47,9 +47,6 @@ def findContours(mask, minRadius=5):
 
     return res
 
-def frameIdentical(image1, image2):
-    return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
-
 # Order:
 # - init*
 # - nextFrame()
@@ -87,6 +84,9 @@ class Lazer(object):
         self.doSharpen = True
 
         self.mode = Mode.intro
+        self.centerX = 0
+        self.centerY = 0
+        self.hitRadius = 0
 
         # to delete
         self.q = deque(maxlen=3)
@@ -109,6 +109,7 @@ class Lazer(object):
         elif mode == Mode.intro:
             self.showGlare = True
 
+
     def setFrame(self, frameNr):
         self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
         self.frameNr = frameNr-1
@@ -116,6 +117,17 @@ class Lazer(object):
 
     def setCrop(self, crop):
         self.crop = crop
+
+
+    def getDistanceToCenter(self, x, y):
+        return calculateDistance(self.centerX, self.centerY, x, y)
+
+    
+    def setCenter(self, x, y, hitRadius):
+        print("Set center: " + str(x) + " / " + str(y))
+        self.centerX = int(x)
+        self.centerY = int(y)
+        self.hitRadius = int(hitRadius)
 
 
     def initFile(self, filename):
@@ -211,6 +223,12 @@ class Lazer(object):
                 cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
                 cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
+                if self.hitRadius > 0:
+                    p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
+                    r = self.hitRadius
+                    d = int(p/r * 100)
+                    recordedHit.distance = d
+
                 #cv.circle(self.mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
                 #cv.circle(self.mask, recordedHit.center, 5, (0, 250, 50), -1)
 
@@ -271,7 +289,10 @@ class Lazer(object):
         cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         for idx, hit in enumerate(self.hits): 
-            s = str(idx) + ": " + str(hit.x) + "/" + str(hit.y) + " r:" + str(hit.radius)
+            if hit.distance > 0:
+                s = str(idx) + " distance: " + str(hit.distance) + " (r:" + str(hit.radius) + ")"
+            else:
+                s = str(idx) + " (r:" + str(hit.radius) + ")"
             if idx == 0:
                 color = (0, 200, 0)
             elif idx == 1:

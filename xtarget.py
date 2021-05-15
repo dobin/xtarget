@@ -7,7 +7,7 @@ import argparse
 from lazer import Lazer
 from model import *
 from tests import *
-
+from gfxutils import *
 
 class Playback(object):
     def __init__(self):
@@ -20,18 +20,21 @@ class Playback(object):
 
         self.initClick()
 
+
     def initClick(self):
         self.trackerLocA = None
         self.trackerLocB = None
         self.trackX = 0
         self.trackY = 0
+        self.hitRadius = 0
 
 
     def click_track(self, event, x, y, flags, param):
         if self.cropModeEnabled or self.targetModeEnabled:
             if event == cv.EVENT_LBUTTONUP:
                 self.trackerLocB = (x,y)
-                print("Up  : " + str(self.trackerLocB))
+                self.hitRadius = calculateDistance(self.trackerLocA[0], self.trackerLocA[1], x, y)
+                print("Up  : " + str(self.trackerLocB) + " Radius: " + str(self.hitRadius))
             if event == cv.EVENT_LBUTTONDOWN:
                 self.initClick()
                 self.trackerLocA = (x,y)
@@ -104,6 +107,9 @@ class Playback(object):
 
             if key == ord('t'):  # Target Mode
                 self.targetModeEnabled = not self.targetModeEnabled
+
+                if not self.targetModeEnabled and self.trackerLocB != None:
+                    self.lazer.setCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
 
             if key == ord('m'):  # Mode
                 if lazer.mode == Mode.intro:

@@ -7,6 +7,8 @@ class RecordedHit(object):
         self.y = 0
         self.radius = 0
 
+        self.distance = 0
+
     def toDict(self):
         me = {
             'center': self.center,
