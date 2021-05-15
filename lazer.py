@@ -1,31 +1,12 @@
 import cv2 as cv
 import imutils
 from collections import deque
-import numpy as np
 from skimage.metrics import structural_similarity as ssim
 import os.path
-from utils import *
-from pathlib import Path
 import yaml
-from enum import Enum
+import numpy as np
 
-
-class RecordedHit(object):
-    def __init__(self):
-        self.center = None
-        self.x = 0
-        self.y = 0
-        self.radius = 0
-
-    def toDict(self):
-        me = {
-            'center': self.center,
-            'x': self.x,
-            'y': self.y,
-            'radius': self.radius
-        }
-        return me
-
+from model import *
 
 # from ball_tracking.py
 def findContours(mask, minRadius=5):
@@ -66,39 +47,8 @@ def findContours(mask, minRadius=5):
 
     return res
 
-
-def diff(mask, previousMask, frame):
-    # compute the Structural Similarity Index (SSIM) between the two
-    # images, ensuring that the difference image is returned
-    (score, diff) = ssim(mask, previousMask, full=True)
-    diff = (diff * 255).astype("uint8")
-    #print("SSIM: {}".format(score))
-
-    if False:
-        # threshold the difference image, followed by finding contours to
-        # obtain the regions of the two input images that differ
-        thresh = cv.threshold(diff, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
-        cnts = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-
-        # loop over the contours
-        for c in cnts:
-            # compute the bounding box of the contour and then draw the
-            # bounding box on both input images to represent where the two
-            # images differ
-            (x, y, w, h) = cv.boundingRect(c)
-            cv.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-    #cv.imshow('diff', diff)
-    return diff
-
-
-
-class Mode(Enum):
-    intro = 1
-    main = 2
-
+def frameIdentical(image1, image2):
+    return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
 
 # Order:
 # - init*
@@ -159,6 +109,14 @@ class Lazer(object):
         elif mode == Mode.intro:
             self.showGlare = True
 
+    def setFrame(self, frameNr):
+        self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
+        self.frameNr = frameNr-1
+
+
+    def setCrop(self, crop):
+        self.crop = crop
+
 
     def initFile(self, filename):
         if not os.path.isfile(filename):
@@ -185,60 +143,18 @@ class Lazer(object):
         self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
 
 
-    def multiframeDenoise(self, mask):
-        self.q.appendleft(mask)
-        #print("Len: " + str(len(self.q)))
-
-        x = 3
-        if x == 1:
-            # use previous frame to average it
-            if len(self.q) != 3:
-                return mask
-
-            q = [
-                self.q[1],
-                self.q[0],
-                self.q[1]
-            ]
-            mask = cv.fastNlMeansDenoisingMulti(q, 1, 1)
-
-
-        if x == 2:
-            # only the frame itself
-            mask = cv.fastNlMeansDenoising(mask)
-
-        if x == 3:
-            pass
-
-        return mask
-
-
-    def setFrame(self, frameNr):
-        self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
-        self.frameNr = frameNr-1
-
-
-    def setCrop(self, crop):
-        self.crop = crop
-
-
     def nextFrame(self):
         self.frameNr += 1
         self.previousMask = self.mask
 
         isTrue, self.frame = self.capture.read()
-        if not isTrue:
+        if not isTrue:  # end of file
             if self.endless:
                 self.init()
-                self.hits = []
-                self.setFrame(0)
-                isTrue, self.frame = self.capture.read()
-                
+                self.setFrame(0)  # seamlessly start at the beginning
+                _, self.frame = self.capture.read()
             else:
                 return False
-
-        # Frame: rescale it
-        self.frame = rescaleFrame(self.frame)
 
         # Crop if user wants to
         if self.crop != None:
@@ -248,80 +164,26 @@ class Lazer(object):
             y2 = self.crop[1][1]
             self.frame = self.frame[y1:y2, x1:x2]
 
-        # we have three posibilities to make a mask: 
-        # - cv.addedWeight brightness/constrast, like in gimp
-        # - cv.inRange in hsv range to filter
-        # - cv.threshhold RGB byte filter
-
-        ###self.mask = filterShit(self.frame)
-
-        # Mask: grey
-        self.mask = toGrey(self.frame)
-        if self.doDenoise:
-            self.mask = self.multiframeDenoise(self.mask)
+        # Mask: Make to grey
+        self.mask = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
 
         # Mask: make it a bit sharper
-        #self.mask = sharpoon(self.mask)
         if self.doSharpen:
-            self.mask = self.sharpen(self.mask)
+            self.mask = cv.medianBlur(self.mask,5)
+            self.mask = cv.erode(self.mask, (7,7), iterations=3)
         
-        #self.mask = trasholding(self.mask)
-        self.mask = self.masking(self.mask)
-        
-        # Mask: force super low brightness high contrast
-        #self.mask = apply_brightness_contrast(self.mask, -126, 115)
-        #orig: mask = apply_brightness_contrast(mask, -127, 116)
-        
-        # also calulate the diff
-        if self.enableDiff and self.previousMask is not None:
-            if self.mask.shape == self.previousMask.shape:
-                self.diff = diff(self.mask, self.previousMask, self.frame)
+        # Mask: threshold, throw away all bytes below thresh (binary)
+        _, self.mask = cv.threshold(self.mask, 255-self.thresh, 255, cv.THRESH_BINARY)
 
-        if self.saveFrames:
-            self.saveCurrentFrame()
-
+        # Mask: Check if there is glare and handle it (glaremeter, drawing rectangles)
         if self.showGlare:
             self.checkGlare()
 
+        # if we wanna record everything
+        if self.saveFrames:
+            self.saveCurrentFrame()
+
         return True
-
-
-    def sharpen(self, frame):
-        # Guassian Blur
-        #frame = cv.GaussianBlur(frame, (3,3), cv.BORDER_DEFAULT)
-
-        # median
-        # TEST: Works for most
-        frame = cv.medianBlur(frame,5)
-
-        # simple
-        # TEST: 
-        #frame = cv.blur(frame,(5,5))
-
-        # Dilating / blur=
-        #frame = cv.dilate(frame, (7,7), iterations=3)
-
-        # Eroding / shapren?
-        frame = cv.erode(frame, (7,7), iterations=3)
-
-        return frame
-
-
-    def masking(self, mask):
-        ret,thresh1 = cv.threshold(mask, 255-self.thresh, 255, cv.THRESH_BINARY)
-        return thresh1
-
-
-    def saveCurrentFrame(self, epilog=''):
-        fname = self.filename + "." + str(self.frameNr) + '.hit.frame' + epilog + '.jpg'
-        print("Save Frame to: " + fname)
-        cv.imwrite(fname, self.frame)
-
-        fname = self.filename + "." + str(self.frameNr) + '.hit.mask' + epilog + '.jpg' 
-        print("Save Mask to: " + fname)
-        cv.imwrite(fname, self.mask)
-
-        #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
     def detectAndDrawHits(self, staticImage=False):
@@ -435,6 +297,18 @@ class Lazer(object):
         cv.imshow('Mask', self.mask)
         if self.diff is not None:
             cv.imshow('Diff', self.diff)
+
+
+    def saveCurrentFrame(self, epilog=''):
+        fname = self.filename + "." + str(self.frameNr) + '.hit.frame' + epilog + '.jpg'
+        print("Save Frame to: " + fname)
+        cv.imwrite(fname, self.frame)
+
+        fname = self.filename + "." + str(self.frameNr) + '.hit.mask' + epilog + '.jpg' 
+        print("Save Mask to: " + fname)
+        cv.imwrite(fname, self.mask)
+
+        #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
     def release(self):
