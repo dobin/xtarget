@@ -167,6 +167,18 @@ class Lazer(object):
                     self.thresh = vidYamlData['thresh']
 
 
+    def initCam(self, camId):
+        self.filename = "cam_" + str(camId)
+        if self.threaded:
+            #self.capture = WebcamVideoStream(src=filename).start()
+            self.capture = FileVideoStream(camId).start()
+            self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
+            self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
+        else:
+            self.capture = cv.VideoCapture(camId)
+            self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
+            self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
+
 
     def nextFrame(self):
         self.frameNr += 1

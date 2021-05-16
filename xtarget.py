@@ -72,11 +72,15 @@ class Playback(object):
                 cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
 
 
-    def play(self, filename, saveFrames=False, saveHits=False):
-        print("Analyzing file: " + filename)
+    def play(self, filename, saveFrames=False, saveHits=False, camId=None):
+        print("Analyzing file: " + str(filename))
         lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
         self.lazer = lazer
-        lazer.initFile(filename)
+
+        if camId != None:
+            lazer.initCam(camId)
+        else: 
+            lazer.initFile(filename)
 
         cv.namedWindow('Video')
         cv.setMouseCallback("Video", self.click_track)
@@ -172,9 +176,12 @@ def main():
     ap.add_argument("-w", "--write", help="write", action='store_true')
     ap.add_argument("-s", "--showframe", help="showframe", action='store_true')
     ap.add_argument("-q", "--testQuick", action='store_true')
+    ap.add_argument("-c", "--cam", action='store_true')
+
 
     ap.add_argument("-f", "--file", help="file", type=str)
     ap.add_argument("-n", "--nr", help="frame nr", type=int)
+    ap.add_argument("--camid", help="Cam", type=int)
 
     ap.add_argument("--saveHits", action='store_true', default=False)
     ap.add_argument("--saveFrames", action='store_true', default=False)
@@ -193,6 +200,9 @@ def main():
         writeVideoInfo(filename)
     elif args.showframe:
         showFrame(filename, args.nr)
+    elif args.cam:
+        playback = Playback()
+        playback.play('cam', saveFrames=args.saveFrames, saveHits=args.saveHits, camId=args.camid)
 
 
 if __name__ == "__main__":
