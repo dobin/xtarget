@@ -178,6 +178,10 @@ class Lazer(object):
             self.capture = cv.VideoCapture(camId)
             self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
+        
+        # hardcore resolution for now
+        self.capture.set(3,1920)
+        self.capture.set(4,1080)
 
 
     def nextFrame(self):
