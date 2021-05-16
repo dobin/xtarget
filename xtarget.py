@@ -29,6 +29,7 @@ class Playback(object):
         self.hitRadius = 0
 
 
+    # used to handle mouse events in the modes
     def click_track(self, event, x, y, flags, param):
         if self.cropModeEnabled or self.targetModeEnabled:
             if event == cv.EVENT_LBUTTONUP:
@@ -45,7 +46,7 @@ class Playback(object):
                 self.trackX = x
                 self.trackY = y
 
-
+    # draw selection from click_track
     def drawTrackings(self):
         if self.cropModeEnabled and self.trackerLocA != None:
             if self.trackerLocB == None:
@@ -80,16 +81,15 @@ class Playback(object):
         if camId != None:
             lazer.initCam(camId)
         else: 
+            lazer.threaded = False
             lazer.initFile(filename)
-
+            
         cv.namedWindow('Video')
         cv.setMouseCallback("Video", self.click_track)
 
         while True:
             lazer.nextFrame()  # gets next frame, and creates mask
-
             lazer.detectAndDrawHits()
-
             self.drawTrackings()  # needs to be before displayFrame
             lazer.displayFrame()
 
@@ -103,6 +103,7 @@ class Playback(object):
                 self.cropModeEnabled = not self.cropModeEnabled
 
                 if not self.cropModeEnabled and self.trackerLocB != None:
+                    # exited crop mode, set the resulting crop
                     crop = [ 
                             self.trackerLocA,
                             self.trackerLocB,
@@ -121,19 +122,23 @@ class Playback(object):
                 elif lazer.mode == Mode.main:
                     lazer.changeMode(Mode.intro)
 
-            elif key == ord('d'): # back
-                lazer.setFrame(lazer.frameNr-1)
-                lazer.init()
-            elif key == ord('e'): # back 10
-                lazer.setFrame(lazer.frameNr-11)
-                lazer.init()
-            elif key == ord('f'): # forward
-                #lazer.nextFrame()
-                pass
-            elif key == ord(' '):  # pause
-                self.isPaused = not self.isPaused
-                lazer.init()
+            # should not jump frames with a webcam, i dont know whats gonna happen
+            if camId == None:
+                if key == ord('d'): # back
+                    lazer.setFrame(lazer.frameNr-1)
+                    lazer.init()
+                elif key == ord('e'): # back 10
+                    lazer.setFrame(lazer.frameNr-11)
+                    lazer.init()
+                elif key == ord('f'): # forward
+                    #lazer.nextFrame()
+                    pass
+                elif key == ord('p'):  # pause
+                    self.isPaused = not self.isPaused
+                    lazer.init()
 
+            # Note: when we press a key in paused mode, we actually go to the next 
+            # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
             if key == ord('s'):  # save frame
                 if self.isPaused:
                     lazer.setFrame(lazer.frameNr)
@@ -178,7 +183,6 @@ def main():
     ap.add_argument("-q", "--testQuick", action='store_true')
     ap.add_argument("-c", "--cam", action='store_true')
 
-
     ap.add_argument("-f", "--file", help="file", type=str)
     ap.add_argument("-n", "--nr", help="frame nr", type=int)
     ap.add_argument("--camid", help="Cam", type=int)
@@ -202,7 +206,7 @@ def main():
         showFrame(filename, args.nr)
     elif args.cam:
         playback = Playback()
-        playback.play('cam', saveFrames=args.saveFrames, saveHits=args.saveHits, camId=args.camid)
+        playback.play('cam', saveFrames=args.saveFrames, saveHits=True, camId=args.camid)
 
 
 if __name__ == "__main__":

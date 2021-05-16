@@ -144,11 +144,12 @@ class Lazer(object):
 
         self.filename = filename
         if self.threaded:
-            #self.capture = WebcamVideoStream(src=filename).start()
+            print("Threads: Enabled")
             self.capture = FileVideoStream(filename).start()
             self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
         else:
+            print("Threads: Disabled")
             self.capture = cv.VideoCapture(filename)
             self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
