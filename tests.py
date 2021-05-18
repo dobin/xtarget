@@ -19,7 +19,7 @@ tests = [
     'test22',       # oneplus 8 pro phone cam, 60fps, far, dark
     'test30',       # tested before, normal
     'test31',       # more wide view, but normal
-    'test42',       # gopro 120fps
+    'test42_out',       # gopro 120fps
 ]
 
 
