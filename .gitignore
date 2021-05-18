@@ -3,5 +3,8 @@ experimentation/*
 tests_glare/*
 tests_cont/*
 tests/*
+test_release/*
 *.jpg
 bak/*
+docs/*
+gopro/*
