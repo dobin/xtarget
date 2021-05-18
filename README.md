@@ -41,3 +41,28 @@ Optional:
   * adjust threshold
   * change target material (use bright, reflective paper)
   * change distance and angle of the camera, or you
+
+
+## Other notes
+
+* Hero4 gopro videos make opencv crash because of audio track. Remove audio with: 
+  * `.\ffmpeg.exe -i .\test.mp4 -vcodec copy -an test_out.mp4`
+
+
+## Keyboard Shortcuts
+
+* c: crop (c to quit)
+* t: crop (t to quit)
+* q: quit
+* space: pause
+* j: increase thresh
+* k: decrease thresh
+* g: show glare
+* m: mode
+* s: savehits 
+
+* video playback:
+    * d: go one frame back
+    * f: go one frame forward
+    * e: go 10 frames back
+    * p: pause
