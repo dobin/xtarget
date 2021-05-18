@@ -3,6 +3,7 @@ import glob
 import time
 import yaml
 import os.path
+import cv2 as cv
 
 from lazer import Lazer
 
@@ -16,6 +17,9 @@ tests = [
     'test20-far',   # far away, sunny
     'test21',       # far away, dark
     'test22',       # oneplus 8 pro phone cam, 60fps, far, dark
+    'test30',       # tested before, normal
+    'test31',       # more wide view, but normal
+    'test42',       # gopro 120fps
 ]
 
 
