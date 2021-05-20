@@ -14,9 +14,10 @@ import curses
 from threading import Thread
 
 class Playback(object):
-    def __init__(self, curses=False):
+    def __init__(self, curses=False, camId=None):
         # for extract_coordinates_callback
         self.lazer = None
+        self.camId = camId
 
         self.curses = curses
         self.ui = None
@@ -81,7 +82,7 @@ class Playback(object):
                 cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
 
 
-    def play(self, filename, saveFrames=False, saveHits=False, camId=None):
+    def play(self, filename, saveFrames=False, saveHits=False):
         print("Analyzing file: " + str(filename))
         lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
         self.lazer = lazer
@@ -90,8 +91,8 @@ class Playback(object):
             self.ui = Gui()
             self.ui.initCurses()
 
-        if camId != None:
-            lazer.initCam(camId)
+        if self.camId != None:
+            lazer.initCam(self.camId)
         else: 
             lazer.initFile(filename)
             
@@ -100,81 +101,91 @@ class Playback(object):
 
         while True:
             lazer.nextFrame()  # gets next frame, and creates mask
-            lazer.detectAndDrawHits()
+            lazer.detectAndDrawHits()  # all in one for now
             self.drawTrackings()  # needs to be before displayFrame
-            lazer.displayFrame()
-
-            if self.curses and lazer.frameNr % 5 == 0:  # rate limit curses i/o for now
-                camConfig = self.ui.run()
-                if camConfig != None:
-                    lazer.updateCamSettings(camConfig)
+            lazer.displayFrame()  # draw ui n stuff
 
             # input
+            self.handleCurses()  # curses is optional
             if self.isPaused:
-                key = cv.waitKey(0)  # wait forever
+                key = cv.waitKey(0)  # wait forever as pause
             else:
                 key = cv.waitKey(2)
-
-            if key == ord('c'):  # Crop image
-                self.cropModeEnabled = not self.cropModeEnabled
-
-                if not self.cropModeEnabled and self.trackerLocB != None:
-                    # exited crop mode, set the resulting crop
-                    crop = [ 
-                            self.trackerLocA,
-                            self.trackerLocB,
-                    ]
-                    self.lazer.setCrop(crop)
-
-            if key == ord('t'):  # Target Mode
-                self.targetModeEnabled = not self.targetModeEnabled
-
-                if not self.targetModeEnabled and self.trackerLocB != None:
-                    self.lazer.setCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
-
-            if key == ord('m'):  # Mode
-                if lazer.mode == Mode.intro:
-                    lazer.changeMode(Mode.main)
-                elif lazer.mode == Mode.main:
-                    lazer.changeMode(Mode.intro)
-
-            # should not jump frames with a webcam, i dont know whats gonna happen
-            if camId == None:
-                if key == ord('d'): # back
-                    lazer.setFrame(lazer.frameNr-1)
-                    lazer.init()
-                elif key == ord('e'): # back 10
-                    lazer.setFrame(lazer.frameNr-11)
-                    lazer.init()
-                elif key == ord('f'): # forward
-                    #lazer.nextFrame()
-                    pass
-                elif key == ord('p'):  # pause
-                    self.isPaused = not self.isPaused
-                    lazer.init()
-
-            # Note: when we press a key in paused mode, we actually go to the next 
-            # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
-            if key == ord('s'):  # save frame
-                if self.isPaused:
-                    lazer.setFrame(lazer.frameNr)
-                lazer.saveCurrentFrame(epilog=".live")
-            if key == ord('j'):  # decrease threshhold
-                if self.isPaused:
-                    lazer.setFrame(lazer.frameNr)
-                lazer.thresh -= 1
-            if key == ord('k'):  # increase threshhold
-                if self.isPaused:
-                    lazer.setFrame(lazer.frameNr)
-                lazer.thresh += 1
-
-            if key == ord('q'):
+            self.handleKey(key)
+            if key == ord('q'):  # quit
                 break
 
+        # end
         if self.curses:
             self.ui.endCurses()
         lazer.release()
         print("Quitting nicely")
+
+
+    def handleCurses(self):
+        if not self.curses:
+            return
+            
+        if self.lazer.frameNr % 5 == 0:  # rate limit curses i/o for now
+            camConfig = self.ui.run()
+            if camConfig != None:
+                self.lazer.updateCamSettings(camConfig)
+
+
+    def handleKey(self, key):
+        if key == ord('c'):  # Crop image
+            self.cropModeEnabled = not self.cropModeEnabled
+
+            if not self.cropModeEnabled and self.trackerLocB != None:
+                # exited crop mode, set the resulting crop
+                crop = [ 
+                        self.trackerLocA,
+                        self.trackerLocB,
+                ]
+                self.lazer.setCrop(crop)
+
+        if key == ord('t'):  # Target Mode
+            self.targetModeEnabled = not self.targetModeEnabled
+
+            if not self.targetModeEnabled and self.trackerLocB != None:
+                self.lazer.setCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
+
+        if key == ord('m'):  # Mode
+            if lazer.mode == Mode.intro:
+                lazer.changeMode(Mode.main)
+            elif lazer.mode == Mode.main:
+                lazer.changeMode(Mode.intro)
+
+        # should not jump frames with a webcam, i dont know whats gonna happen
+        if self.camId == None:
+            if key == ord('d'): # back
+                lazer.setFrame(lazer.frameNr-1)
+                lazer.init()
+            elif key == ord('e'): # back 10
+                lazer.setFrame(lazer.frameNr-11)
+                lazer.init()
+            elif key == ord('f'): # forward
+                #lazer.nextFrame()
+                pass
+            elif key == ord('p'):  # pause
+                self.isPaused = not self.isPaused
+                lazer.init()
+
+        # Note: when we press a key in paused mode, we actually go to the next 
+        # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
+        if key == ord('s'):  # save frame
+            if self.isPaused:
+                lazer.setFrame(lazer.frameNr)
+            lazer.saveCurrentFrame(epilog=".live")
+        if key == ord('j'):  # decrease threshhold
+            if self.isPaused:
+                lazer.setFrame(lazer.frameNr)
+            lazer.thresh -= 1
+        if key == ord('k'):  # increase threshhold
+            if self.isPaused:
+                lazer.setFrame(lazer.frameNr)
+            lazer.thresh += 1
+
 
 
 def showFrame(filename, frameNr):
@@ -225,8 +236,9 @@ def main():
     elif args.showframe:
         showFrame(filename, args.nr)
     elif args.cam:
-        playback = Playback(curses=curses)
-        playback.play('cam', saveFrames=args.saveFrames, saveHits=True, camId=args.camid)
+        camId = args.camid
+        playback = Playback(curses=curses, camId=args.camid)
+        playback.play('cam', saveFrames=args.saveFrames, saveHits=True)
 
 
 def startCursesThread():
