@@ -5,6 +5,7 @@ import yaml
 import os.path
 import cv2 as cv
 
+from gfxutils import getTime
 from lazer import Lazer
 
 # all recorded with surface book front camera 30fps if not stated otherwise
@@ -22,11 +23,6 @@ tests = [
     'test42_out',       # gopro 120fps
 ]
 
-
-def getTime():
-    return time.time()
-    #returm time.process_time()
-    #return time.clock()
 
 
 def doTestsQuick():

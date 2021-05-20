@@ -7,6 +7,7 @@ import os.path
 import yaml
 from filevideostream import FileVideoStream
 import time
+from fps import Fps
 
 from gfxutils import *
 from model import *
@@ -101,6 +102,8 @@ class Lazer(object):
         # detection options
         self.graceTime = 10  # How many frames between detections
         
+        # fuuu
+        self.fps = Fps()
         
         self.init()
 
@@ -219,6 +222,7 @@ class Lazer(object):
 
 
     def nextFrame(self):
+        self.fps.tack()
         self.frameNr += 1
         self.previousMask = self.mask
 
@@ -349,6 +353,8 @@ class Lazer(object):
         s= "Sharpen: " + str(self.doSharpen)
         cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
+        s = "FPS: " + str(self.fps.get())
+        cv.putText(self.frame, s, (o*0,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
         s = "Mode: " + str(self.mode.name)
         cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
