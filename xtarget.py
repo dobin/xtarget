@@ -93,7 +93,6 @@ class Playback(object):
         if camId != None:
             lazer.initCam(camId)
         else: 
-            lazer.threaded = False
             lazer.initFile(filename)
             
         cv.namedWindow('Video')

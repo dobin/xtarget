@@ -5,7 +5,7 @@ from collections import deque
 from skimage.metrics import structural_similarity as ssim
 import os.path
 import yaml
-from filevideostream import FileVideoStream
+from queuevideostream import QueueVideoStream
 import time
 from fps import Fps
 
@@ -59,7 +59,7 @@ def findContours(mask, minRadius):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid, crop=None, showGlare=True, saveFrames=False, saveHits=False, endless=False, threaded=False):
+    def __init__(self, showVid, crop=None, showGlare=True, saveFrames=False, saveHits=False, endless=False, threaded=True):
         self.capture = None
         self.frame = None
         self.mask = None
@@ -154,7 +154,7 @@ class Lazer(object):
         self.filename = filename
         if self.threaded:
             print("Threads: Enabled")
-            self.capture = FileVideoStream(filename).start()
+            self.capture = QueueVideoStream(filename).start()
             self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
         else:
@@ -181,7 +181,7 @@ class Lazer(object):
         self.filename = "cam_" + str(camId)
         print("Threaded: " + str(self.threaded))
         if self.threaded:
-            self.capture = FileVideoStream(camId).start()
+            self.capture = QueueVideoStream(camId).start()
             #time.sleep(1)  # give cam time to autofocus etc. 
             self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
@@ -195,10 +195,9 @@ class Lazer(object):
             print("gain: " + str(self.capture.get(cv.CAP_PROP_GAIN)))
             print("AutoExpo: " + str(self.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
 
-
-        # hardcore resolution for now
-        self.capture.set(3,1920)
-        self.capture.set(4,1080)
+            # hardcode resolution for now
+            self.capture.set(3,1920)
+            self.capture.set(4,1080)
 
 
     def updateCamSettings(self, camConfig):
@@ -404,8 +403,8 @@ class Lazer(object):
 
     def release(self):
         if self.threaded:
-            self.capture.stream.release()
             self.capture.stop()
+            self.capture.stream.release()
         else:
             self.capture.release()
         if self.showVid:

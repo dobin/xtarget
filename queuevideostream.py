@@ -6,7 +6,7 @@ import time
 from queue import Queue
 
 
-class FileVideoStream:
+class QueueVideoStream:
     def __init__(self, path, transform=None, queue_size=30):
         # initialize the file video stream along with the boolean
         # used to indicate if the thread should be stopped or not
@@ -22,6 +22,10 @@ class FileVideoStream:
         self.thread.daemon = True
 
     def start(self):
+        # hardcode resolution for now
+        self.stream.set(3,1920)
+        self.stream.set(4,1080)
+
         # start a thread to read frames from the file video stream
         self.thread.start()
         return self
