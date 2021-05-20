@@ -14,9 +14,7 @@ class Fps(object):
         self.ticksum += newtick
         self.ticklist[self.tickIndex] = newtick
 
-        self.tickIndex += 1
-        if self.tickIndex == self.ticklistSize:
-            self.tickIndex = 0
+        self.tickIndex = (self.tickIndex + 1) % self.ticklistSize
 
     def tack(self):
         t = getTime()
@@ -35,6 +33,7 @@ class Fps(object):
 
 def main3():
     fps = Fps()
+    fps.ticklistSize = 3
 
     fps.tack()
     time.sleep(0.1)
@@ -44,4 +43,6 @@ def main3():
     time.sleep(0.1)
     fps.tack()
     time.sleep(0.1)
-    print("A: " + str(fps.get()))
+    print("FPS: " + str(fps.get()))
+
+# main3()
