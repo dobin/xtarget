@@ -86,10 +86,12 @@ class Lazer(object):
         self.minRadius = 1.0
         self.doDenoise = True
         self.doSharpen = True
-        self.thresh = 14
-        self.exposure = -5.0
-        self.gain = 50.0
-        self.autoExposure = 1.0
+
+        c = CamConfig()
+        self.thresh = c.thresh
+        self.exposure = c.exposure
+        self.gain = c.gain
+        self.autoExposure = c.autoExposure
 
         # data for target
         self.centerX = 0

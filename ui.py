@@ -56,7 +56,7 @@ class Gui(object):
             if self.selectedLine == 4:
                 self.camConfig.exposure += value
             if self.selectedLine == 5:
-                self.camConfig.gain += (value * 10)
+                self.camConfig.gain += (value * 50)
             if self.selectedLine == 6:
                 if value == 1:
                     self.camConfig.autoExposure = 0.25
