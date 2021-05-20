@@ -59,7 +59,7 @@ def findContours(mask, minRadius):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid, crop=None, showGlare=True, saveFrames=False, saveHits=False, endless=False, threaded=True):
+    def __init__(self, showVid, crop=None, threaded=False, showGlare=True, saveFrames=False, saveHits=False, endless=False):
         self.capture = None
         self.frame = None
         self.mask = None

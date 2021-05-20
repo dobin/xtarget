@@ -14,13 +14,13 @@ import curses
 from threading import Thread
 
 class Playback(object):
-    def __init__(self, curses=False, camId=None, saveFrames=False, saveHits=False):
+    def __init__(self, curses=False, camId=None, saveFrames=False, saveHits=False, threaded=False):
         # for extract_coordinates_callback
         self.curses = curses
         self.camId = camId
         self.saveFrames = saveFrames
         self.saveHits = saveHits
-        self.lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
+        self.lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True, threaded=threaded)
 
         self.ui = None
         self.camConfig = None
@@ -120,7 +120,7 @@ class Playback(object):
         if self.curses:
             self.ui.endCurses()
         self.lazer.release()
-        print("Quitting nicely")
+        print("Quitting nicely...")
 
 
     def handleCurses(self):
@@ -151,41 +151,42 @@ class Playback(object):
             if not self.targetModeEnabled and self.trackerLocB != None:
                 self.lazer.setCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
 
-        if key == ord('m'):  # Mode
-            if lazer.mode == Mode.intro:
-                lazer.changeMode(Mode.main)
-            elif lazer.mode == Mode.main:
-                lazer.changeMode(Mode.intro)
+        if key == ord(' '):  # Mode
+            self.lazer.init()
+            if self.lazer.mode == Mode.intro:
+                self.lazer.changeMode(Mode.main)
+            elif self.lazer.mode == Mode.main:
+                self.lazer.changeMode(Mode.intro)
 
         # should not jump frames with a webcam, i dont know whats gonna happen
         if self.camId == None:
             if key == ord('d'): # back
-                lazer.setFrame(lazer.frameNr-1)
-                lazer.init()
+                self.lazer.setFrame(lazer.frameNr-1)
+                self.lazer.init()
             elif key == ord('e'): # back 10
-                lazer.setFrame(lazer.frameNr-11)
-                lazer.init()
+                self.lazer.setFrame(lazer.frameNr-11)
+                self.lazer.init()
             elif key == ord('f'): # forward
                 #lazer.nextFrame()
                 pass
             elif key == ord('p'):  # pause
                 self.isPaused = not self.isPaused
-                lazer.init()
+                self.lazer.init()
 
         # Note: when we press a key in paused mode, we actually go to the next 
         # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
         if key == ord('s'):  # save frame
             if self.isPaused:
-                lazer.setFrame(lazer.frameNr)
-            lazer.saveCurrentFrame(epilog=".live")
+                self.lazer.setFrame(lazer.frameNr)
+            self.lazer.saveCurrentFrame(epilog=".live")
         if key == ord('j'):  # decrease threshhold
             if self.isPaused:
-                lazer.setFrame(lazer.frameNr)
-            lazer.thresh -= 1
+                self.lazer.setFrame(lazer.frameNr)
+            self.lazer.thresh -= 1
         if key == ord('k'):  # increase threshhold
             if self.isPaused:
-                lazer.setFrame(lazer.frameNr)
-            lazer.thresh += 1
+                self.lazer.setFrame(lazer.frameNr)
+            self.lazer.thresh += 1
 
 
 
@@ -226,7 +227,7 @@ def main():
 
     filename = args.file
     if args.video:
-        playback = Playback(saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback(saveFrames=args.saveFrames, saveHits=args.saveHits, threaded=False)
         playback.init(filename)
         playback.play()
     elif args.test:
