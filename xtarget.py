@@ -14,12 +14,14 @@ import curses
 from threading import Thread
 
 class Playback(object):
-    def __init__(self, curses=False, camId=None):
+    def __init__(self, curses=False, camId=None, saveFrames=False, saveHits=False):
         # for extract_coordinates_callback
-        self.lazer = None
-        self.camId = camId
-
         self.curses = curses
+        self.camId = camId
+        self.saveFrames = saveFrames
+        self.saveHits = saveHits
+        self.lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
+
         self.ui = None
         self.camConfig = None
         
@@ -82,28 +84,27 @@ class Playback(object):
                 cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
 
 
-    def play(self, filename, saveFrames=False, saveHits=False):
-        print("Analyzing file: " + str(filename))
-        lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
-        self.lazer = lazer
-
+    def init(self, filename):
+        print("Playing file: " + str(filename))
         if self.curses:
             self.ui = Gui()
             self.ui.initCurses()
 
         if self.camId != None:
-            lazer.initCam(self.camId)
+            self.lazer.initCam(self.camId)
         else: 
-            lazer.initFile(filename)
+            self.lazer.initFile(filename)
             
         cv.namedWindow('Video')
         cv.setMouseCallback("Video", self.click_track)
 
+
+    def play(self):
         while True:
-            lazer.nextFrame()  # gets next frame, and creates mask
-            lazer.detectAndDrawHits()  # all in one for now
+            self.lazer.nextFrame()  # gets next frame, and creates mask
+            self.lazer.detectAndDrawHits()  # all in one for now
             self.drawTrackings()  # needs to be before displayFrame
-            lazer.displayFrame()  # draw ui n stuff
+            self.lazer.displayFrame()  # draw ui n stuff
 
             # input
             self.handleCurses()  # curses is optional
@@ -118,7 +119,7 @@ class Playback(object):
         # end
         if self.curses:
             self.ui.endCurses()
-        lazer.release()
+        self.lazer.release()
         print("Quitting nicely")
 
 
@@ -225,8 +226,9 @@ def main():
 
     filename = args.file
     if args.video:
-        playback = Playback()
-        playback.play(filename, saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback(saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback.init(filename)
+        playback.play()
     elif args.test:
         doTests()
     elif args.testQuick:
@@ -237,8 +239,9 @@ def main():
         showFrame(filename, args.nr)
     elif args.cam:
         camId = args.camid
-        playback = Playback(curses=curses, camId=args.camid)
-        playback.play('cam', saveFrames=args.saveFrames, saveHits=True)
+        playback = Playback(curses=curses, camId=args.camid, saveFrames=args.saveFrames, saveHits=True)
+        playback.init('cam')
+        playback.play()
 
 
 def startCursesThread():
