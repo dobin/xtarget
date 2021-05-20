@@ -383,6 +383,9 @@ class Lazer(object):
             s = "Press m to stop"
             cv.putText(self.frame, s, ((self.width >> 1) - 60,self.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
+        if self.centerX != 0:
+            cv.circle(self.frame, (self.centerX, self.centerY), self.hitRadius, (0,200,0), 2)
+
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
         #if self.diff is not None:
