@@ -1,3 +1,4 @@
+from enum import auto
 import cv2 as cv
 import imutils
 from collections import deque
@@ -5,14 +6,14 @@ from skimage.metrics import structural_similarity as ssim
 import os.path
 import yaml
 from filevideostream import FileVideoStream
-from webcamvideostream import WebcamVideoStream
+import time
 
 from gfxutils import *
 from model import *
 
 
 # from ball_tracking.py
-def findContours(mask, minRadius=5):
+def findContours(mask, minRadius):
     res = []
 
     # find contours in the mask and initialize the current
@@ -45,7 +46,7 @@ def findContours(mask, minRadius=5):
             recordedHit.radius = int(radius)
             res.append(recordedHit)
         else:
-            #print("Too small: " + str(radius))
+            print("Too small: " + str(radius))
             pass
 
     return res
@@ -61,17 +62,18 @@ class Lazer(object):
         self.capture = None
         self.frame = None
         self.mask = None
-        self.diff = None
         self.previousMask = None
         self.frameNr = -1  # so it is 0 the first iteration
         self.lastFoundFrameNr = 0
         self.showVid = showVid
         self.showGlare = showGlare
-        self.graceTime = 10  # How many frames between detections
+        self.mode = Mode.intro
+        
         self.filename = None
         self.crop = crop
         self.width = None
         self.height = None
+        self.threaded = threaded
 
         # debug options
         self.saveFrames = saveFrames
@@ -81,21 +83,23 @@ class Lazer(object):
         self.endless = endless
 
         # decoding options
-        self.minRadius = 5
-        self.thresh = 14
+        self.minRadius = 1.0
         self.doDenoise = True
         self.doSharpen = True
+        self.thresh = 14
+        self.exposure = -5.0
+        self.gain = 50.0
+        self.autoExposure = 1.0
 
-        self.mode = Mode.intro
+        # data for target
         self.centerX = 0
         self.centerY = 0
         self.hitRadius = 0
 
-        # to delete
-        self.q = deque(maxlen=3)
-        self.enableDiff = False
-
-        self.threaded = threaded
+        # detection options
+        self.graceTime = 10  # How many frames between detections
+        
+        
         self.init()
 
 
@@ -170,19 +174,46 @@ class Lazer(object):
 
     def initCam(self, camId):
         self.filename = "cam_" + str(camId)
+        print("Threaded: " + str(self.threaded))
         if self.threaded:
-            #self.capture = WebcamVideoStream(src=filename).start()
             self.capture = FileVideoStream(camId).start()
+            #time.sleep(1)  # give cam time to autofocus etc. 
             self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
+            print("Exposure: " + str(self.capture.stream.get(cv.CAP_PROP_EXPOSURE)))
+            print("gain: " + str(self.capture.stream.get(cv.CAP_PROP_GAIN)))
         else:
             self.capture = cv.VideoCapture(camId)
             self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
             self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
-        
+            print("Exposure: " + str(self.capture.get(cv.CAP_PROP_EXPOSURE)))
+            print("gain: " + str(self.capture.get(cv.CAP_PROP_GAIN)))
+            print("AutoExpo: " + str(self.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
+
+
         # hardcore resolution for now
         self.capture.set(3,1920)
         self.capture.set(4,1080)
+
+
+    def updateCamSettings(self, camConfig):
+        if camConfig.thresh != self.thresh:
+            print("Update Thresh: " + str(camConfig.thresh))
+            self.thresh = camConfig.thresh
+            
+        if camConfig.exposure != self.exposure:
+            print("Update exposure: " + str(camConfig.exposure))
+            self.exposure = camConfig.exposure
+            self.capture.set(cv.CAP_PROP_EXPOSURE, self.exposure)
+
+        if camConfig.gain != self.gain:
+            print("Update gain: " + str(camConfig.gain))
+            self.gain = camConfig.gain
+            self.capture.set(cv.CAP_PROP_GAIN, self.gain)
+
+        if camConfig.autoExposure != self.autoExposure:
+            self.autoExposure = self.autoExposure
+            self.capture.set(cv.CAP_PROP_AUTO_EXPOSURE, self.autoExposure)
 
 
     def nextFrame(self):
@@ -244,7 +275,7 @@ class Lazer(object):
         recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.frameNr
-            print(" --> Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
+            #print(" --> Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
 
@@ -347,8 +378,8 @@ class Lazer(object):
 
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
-        if self.diff is not None:
-            cv.imshow('Diff', self.diff)
+        #if self.diff is not None:
+        #    cv.imshow('Diff', self.diff)
 
 
     def saveCurrentFrame(self, epilog=''):

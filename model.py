@@ -19,6 +19,14 @@ class RecordedHit(object):
         return me
 
 
+class CamConfig(object):
+    def __init__(self):
+        self.thresh = 14
+        self.exposure = -5.0
+        self.gain = 50.0
+        self.autoExposure = 1.0
+
+
 class Mode(Enum):
     intro = 1
     main = 2

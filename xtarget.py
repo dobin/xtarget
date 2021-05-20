@@ -9,10 +9,18 @@ from model import *
 from tests import *
 from gfxutils import *
 
+from ui import Gui
+import curses
+from threading import Thread
+
 class Playback(object):
-    def __init__(self):
+    def __init__(self, curses=False):
         # for extract_coordinates_callback
         self.lazer = None
+
+        self.curses = curses
+        self.ui = None
+        self.camConfig = None
         
         self.isPaused = False
         self.cropModeEnabled = False
@@ -78,6 +86,10 @@ class Playback(object):
         lazer = Lazer(showVid=True, saveFrames=saveFrames, saveHits=saveHits, endless=True)
         self.lazer = lazer
 
+        if self.curses:
+            self.ui = Gui()
+            self.ui.initCurses()
+
         if camId != None:
             lazer.initCam(camId)
         else: 
@@ -92,6 +104,11 @@ class Playback(object):
             lazer.detectAndDrawHits()
             self.drawTrackings()  # needs to be before displayFrame
             lazer.displayFrame()
+
+            if self.curses and lazer.frameNr % 5 == 0:  # rate limit curses i/o for now
+                camConfig = self.ui.run()
+                if camConfig != None:
+                    lazer.updateCamSettings(camConfig)
 
             # input
             if self.isPaused:
@@ -155,8 +172,10 @@ class Playback(object):
             if key == ord('q'):
                 break
 
+        if self.curses:
+            self.ui.endCurses()
         lazer.release()
-        print("")
+        print("Quitting nicely")
 
 
 def showFrame(filename, frameNr):
@@ -190,6 +209,8 @@ def main():
     ap.add_argument("--saveHits", action='store_true', default=False)
     ap.add_argument("--saveFrames", action='store_true', default=False)
 
+    ap.add_argument("--curses", action='store_true', default=False)
+
     args = ap.parse_args()
 
     filename = args.file
@@ -205,9 +226,15 @@ def main():
     elif args.showframe:
         showFrame(filename, args.nr)
     elif args.cam:
-        playback = Playback()
+        playback = Playback(curses=curses)
         playback.play('cam', saveFrames=args.saveFrames, saveHits=True, camId=args.camid)
 
+
+def startCursesThread():
+    data = CamConfig()
+    gui = Gui(data)
+    gui.initCurses()
+    gui.run()
 
 if __name__ == "__main__":
     main()
