@@ -64,6 +64,7 @@ class Lazer(object):
         self.lastFoundFrameNr = 0
         self.showGlare = showGlare
         self.mode = mode
+        self.debug = True
 
         self.videoStream = videoStream
         self.thresh = thresh
@@ -223,22 +224,26 @@ class Lazer(object):
         o = 300
 
         color = (255, 255, 255)
-        s = 'Frame: '+ str(self.videoStream.frameNr)
-        cv.putText(self.frame, s, (0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
         s= "Tresh: " + str(self.thresh) # + "  Glare: " + str(self.glareMeterAvg)
-        cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        cv.putText(self.frame, s, (o*0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+
+
         if self.glareMeterAvg > 0:
             cv.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
 
-        s = "Denoise: " + str(self.doDenoise)
-        cv.putText(self.frame, s, ((o*0),60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-        s= "Sharpen: " + str(self.doSharpen)
-        cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
-
-        s = "FPS: " + str(self.videoStream.fps.get())
-        cv.putText(self.frame, s, (o*0,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
         s = "Mode: " + str(self.mode.name)
-        cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+        cv.putText(self.frame, s, (o*0,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        if self.videoStream.fps.get() < 28:
+            s = "FPS: " + str(self.videoStream.fps.get())
+            cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+
+        if self.debug:
+            s = 'Frame: '+ str(self.videoStream.frameNr)
+            cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            s = "Denoise: " + str(self.doDenoise)
+            cv.putText(self.frame, s, ((o*0),60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            s= "Sharpen: " + str(self.doSharpen)
+            cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         for idx, hit in enumerate(self.hits): 
             if hit.distance > 0:
@@ -260,10 +265,10 @@ class Lazer(object):
 
         color = (0, 0, 255)
         if self.mode == Mode.intro:
-            s = "Press m to start"
-            cv.putText(self.frame, s, (self.videoStream.width >> 1,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+            s = "Press SPACE to start"
+            cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
         elif self.mode == Mode.main:
-            s = "Press m to stop"
+            s = "Press SPACE to stop"
             cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         if self.centerX != 0:
