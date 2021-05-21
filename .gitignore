@@ -1,9 +1,6 @@
 experimentation/*
 *.pyc
-tests_glare/*
-tests_cont/*
-tests/*
-test_release/*
+tests*/*
 *.jpg
 bak/*
 docs/*
