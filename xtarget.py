@@ -7,7 +7,6 @@ from model import *
 from tests import *
 from gfxutils import *
 
-from ui import Gui
 import curses
 from threading import Thread
 from playback import Playback
