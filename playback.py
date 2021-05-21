@@ -8,6 +8,8 @@ from gfxutils import *
 
 
 class Playback(object):
+    """Opens a window to play back a video/cam"""
+
     def __init__(self, videoStream, thresh=14, curses=False,  saveFrames=False, saveHits=False):
         self.videoStream = videoStream
         self.curses = curses
@@ -27,55 +29,12 @@ class Playback(object):
 
 
     def initClick(self):
+        """Reset all UI selection related data"""
         self.trackerLocA = None
         self.trackerLocB = None
         self.trackX = 0
         self.trackY = 0
         self.hitRadius = 0
-
-
-    # used to handle mouse events in the modes
-    def click_track(self, event, x, y, flags, param):
-        if self.cropModeEnabled or self.targetModeEnabled:
-            if event == cv.EVENT_LBUTTONUP:
-                self.trackerLocB = (x,y)
-                self.hitRadius = calculateDistance(self.trackerLocA[0], self.trackerLocA[1], x, y)
-                logger.info("Click Up  : " + str(self.trackerLocB) + " Radius: " + str(self.hitRadius))
-            if event == cv.EVENT_LBUTTONDOWN:
-                self.initClick()
-                self.trackerLocA = (x,y)
-                self.trackX = x
-                self.trackY = y
-                logger.info("Click Down: " + str(self.trackerLocA))
-            elif event == cv.EVENT_MOUSEMOVE:
-                self.trackX = x
-                self.trackY = y
-
-    # draw selection from click_track
-    def drawTrackings(self):
-        if self.cropModeEnabled and self.trackerLocA != None:
-            if self.trackerLocB == None:
-                cv.rectangle(self.lazer.frame, 
-                    self.trackerLocA, 
-                    (self.trackX, self.trackY), 
-                    (0,255,0), 2)
-            else:
-                cv.rectangle(self.lazer.frame, 
-                    self.trackerLocA, 
-                    self.trackerLocB, 
-                    (0,255,0), 2)
-
-        if self.targetModeEnabled and self.trackerLocA != None:
-            if self.trackerLocB == None:
-                center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
-                pt_on_circle = np.array([self.trackX, self.trackY], dtype=np.int64)
-                radius = int(np.linalg.norm(pt_on_circle-center))
-                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
-            else:
-                center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
-                pt_on_circle = np.array([self.trackerLocB[0], self.trackerLocB[1]], dtype=np.int64)
-                radius = int(np.linalg.norm(pt_on_circle-center))
-                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
 
 
     def init(self):
@@ -84,10 +43,11 @@ class Playback(object):
             self.ui.initCurses()
             
         cv.namedWindow('Video')
-        cv.setMouseCallback("Video", self.click_track)
+        cv.setMouseCallback("Video", self.clickTrack)
 
 
     def play(self):
+        """Play the video/cam source from self.videoStream with hit detection as a window in a endless loop"""
         while True:
             self.lazer.nextFrame()  # gets next frame, and creates mask
             self.lazer.detectAndDrawHits()  # all in one for now
@@ -112,17 +72,8 @@ class Playback(object):
         print("Quitting nicely...")
 
 
-    def handleCurses(self):
-        if not self.curses:
-            return
-            
-        if self.lazer.frameNr % 5 == 0:  # rate limit curses i/o for now
-            camConfig = self.ui.run()
-            if camConfig != None:
-                self.lazer.updateCamSettings(camConfig)
-
-
     def handleKey(self, key):
+        """Handle input keys by invoking their appropriate actions"""
         if key == ord('c'):  # Crop selection mode
             self.cropModeEnabled = not self.cropModeEnabled
             if not self.cropModeEnabled and self.trackerLocB != None:
@@ -173,3 +124,57 @@ class Playback(object):
             if self.isPaused:
                 self.lazer.setFrame(self.lazer.videoStream.frameNr)
             self.lazer.thresh += 1
+
+
+    def handleCurses(self):
+        if not self.curses:
+            return
+            
+        if self.lazer.frameNr % 5 == 0:  # rate limit curses i/o for now
+            camConfig = self.ui.run()
+            if camConfig != None:
+                self.lazer.updateCamSettings(camConfig)
+
+
+    def clickTrack(self, event, x, y, flags, param):
+        """Mouse callback used to handle mouse events based on mode"""
+        if self.cropModeEnabled or self.targetModeEnabled:
+            if event == cv.EVENT_LBUTTONUP:
+                self.trackerLocB = (x,y)
+                self.hitRadius = calculateDistance(self.trackerLocA[0], self.trackerLocA[1], x, y)
+                logger.info("Click Up  : " + str(self.trackerLocB) + " Radius: " + str(self.hitRadius))
+            if event == cv.EVENT_LBUTTONDOWN:
+                self.initClick()
+                self.trackerLocA = (x,y)
+                self.trackX = x
+                self.trackY = y
+                logger.info("Click Down: " + str(self.trackerLocA))
+            elif event == cv.EVENT_MOUSEMOVE:
+                self.trackX = x
+                self.trackY = y
+
+    def drawTrackings(self):
+        """Draw temporary UI selection onto the frame for clickTrack"""
+        if self.cropModeEnabled and self.trackerLocA != None:
+            if self.trackerLocB == None:
+                cv.rectangle(self.lazer.frame, 
+                    self.trackerLocA, 
+                    (self.trackX, self.trackY), 
+                    (0,255,0), 2)
+            else:
+                cv.rectangle(self.lazer.frame, 
+                    self.trackerLocA, 
+                    self.trackerLocB, 
+                    (0,255,0), 2)
+
+        if self.targetModeEnabled and self.trackerLocA != None:
+            if self.trackerLocB == None:
+                center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
+                pt_on_circle = np.array([self.trackX, self.trackY], dtype=np.int64)
+                radius = int(np.linalg.norm(pt_on_circle-center))
+                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
+            else:
+                center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
+                pt_on_circle = np.array([self.trackerLocB[0], self.trackerLocB[1]], dtype=np.int64)
+                radius = int(np.linalg.norm(pt_on_circle-center))
+                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)

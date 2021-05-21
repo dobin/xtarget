@@ -53,6 +53,8 @@ def findContours(mask, minRadius):
     
 
 class Lazer(object):
+    """Main hit detection class"""
+
     def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
         self.videoStream = videoStream
         self.thresh = thresh
