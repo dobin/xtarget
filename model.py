@@ -21,7 +21,6 @@ class RecordedHit(object):
 
 class CamConfig(object):
     def __init__(self):
-        self.thresh = 14
         self.exposure = -7.0
         self.gain = 500.0
         self.autoExposure = 1.0

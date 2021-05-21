@@ -5,27 +5,54 @@ import cv2
 import time
 from queue import Queue
 
+class InputStream():
+    def __init__(self, path):
+        self.path = path
 
-class QueueVideoStream:
-    def __init__(self, path, transform=None, queue_size=30):
-        # initialize the file video stream along with the boolean
-        # used to indicate if the thread should be stopped or not
-        self.stream = cv2.VideoCapture(path)
+
+    def initStream(self):
+        self.capture = cv2.VideoCapture(self.path)
+
+
+    def read(self):
+        # return next frame in the queue
+        pass
+
+
+    def start(self):
+        pass
+
+
+    def release(self):
+        pass
+
+
+class SimpleInputStream(InputStream):
+    def __init__(self, path):
+        super().__init__(path)
+    
+    def read(self):
+        return self.capture.read()
+
+    def release(self):
+        self.capture.release()
+
+
+class QueueInputStream(InputStream):
+    def __init__(self, path):
+        super().__init__(path)
+
         self.stopped = False
-        self.transform = transform
+        self.transform = False
 
         # initialize the queue used to store frames read from
         # the video file
-        self.Q = Queue(maxsize=queue_size)
+        self.Q = Queue(maxsize=30)
         # intialize thread
         self.thread = Thread(target=self.update, args=())
         self.thread.daemon = True
 
     def start(self):
-        # hardcode resolution for now
-        self.stream.set(3,1920)
-        self.stream.set(4,1080)
-
         # start a thread to read frames from the file video stream
         self.thread.start()
         return self
@@ -41,7 +68,7 @@ class QueueVideoStream:
             # otherwise, ensure the queue has room in it
             if not self.Q.full():
                 # read the next frame from the file
-                (grabbed, frame) = self.stream.read()
+                (grabbed, frame) = self.capture.read()
 
                 # if the `grabbed` boolean is `False`, then we have
                 # reached the end of the video file
@@ -68,7 +95,7 @@ class QueueVideoStream:
             else:
                 time.sleep(0.1)  # Rest for 10ms, we have a full queue
 
-        self.stream.release()
+        self.capture.release()
 
     def read(self):
         # return next frame in the queue
@@ -94,3 +121,7 @@ class QueueVideoStream:
         self.stopped = True
         # wait until stream resources are released (producer thread might be still grabbing frame)
         self.thread.join()
+
+    def release(self):
+        self.capture.stop()
+        self.capture.stream.release()

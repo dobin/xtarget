@@ -2,12 +2,9 @@ from enum import auto
 import cv2 as cv
 import imutils
 from collections import deque
-from skimage.metrics import structural_similarity as ssim
 import os.path
 import yaml
-from queuevideostream import QueueVideoStream
 import time
-from fps import Fps
 
 from gfxutils import *
 from model import *
@@ -59,40 +56,27 @@ def findContours(mask, minRadius):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, showVid, crop=None, threaded=False, showGlare=True, saveFrames=False, saveHits=False, endless=False):
+    def __init__(self, videoStream, thresh=14, showVid=True, showGlare=True, saveFrames=False, saveHits=False):
         self.capture = None
         self.frame = None
         self.mask = None
         self.previousMask = None
-        self.frameNr = -1  # so it is 0 the first iteration
         self.lastFoundFrameNr = 0
         self.showVid = showVid
         self.showGlare = showGlare
         self.mode = Mode.intro
-        
-        self.filename = None
-        self.crop = crop
-        self.width = None
-        self.height = None
-        self.threaded = threaded
+
+        self.videoStream = videoStream
+        self.thresh = thresh
 
         # debug options
         self.saveFrames = saveFrames
         self.saveHits = saveHits
 
-        # playback options
-        self.endless = endless
-
         # decoding options
         self.minRadius = 1.0
         self.doDenoise = True
         self.doSharpen = True
-
-        c = CamConfig()
-        self.thresh = c.thresh
-        self.exposure = c.exposure
-        self.gain = c.gain
-        self.autoExposure = c.autoExposure
 
         # data for target
         self.centerX = 0
@@ -101,9 +85,6 @@ class Lazer(object):
 
         # detection options
         self.graceTime = 10  # How many frames between detections
-        
-        # fuuu
-        self.fps = Fps()
         
         self.init()
 
@@ -123,18 +104,6 @@ class Lazer(object):
             self.showGlare = True
 
 
-    def setFrame(self, frameNr):
-        if self.threaded:
-            self.capture.stream.set(cv.CAP_PROP_POS_FRAMES, frameNr)
-        else:
-            self.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
-        self.frameNr = frameNr-1
-
-
-    def setCrop(self, crop):
-        self.crop = crop
-
-
     def getDistanceToCenter(self, x, y):
         return calculateDistance(self.centerX, self.centerY, x, y)
 
@@ -146,101 +115,16 @@ class Lazer(object):
         self.hitRadius = int(hitRadius)
 
 
-    def initFile(self, filename):
-        if not os.path.isfile(filename):
-            print("File not found")
-            return
-
-        self.filename = filename
-        if self.threaded:
-            print("Threads: Enabled")
-            self.capture = QueueVideoStream(filename).start()
-            self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
-            self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
-        else:
-            print("Threads: Disabled")
-            self.capture = cv.VideoCapture(filename)
-            self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
-            self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
-
-        # check for crop settings for file
-        vidYaml = filename +'.yaml'
-        if os.path.isfile(vidYaml):
-            print("Has croppings...")
-            with open(vidYaml) as file:
-                vidYamlData = yaml.load(file, Loader=yaml.FullLoader)
-                if 'x1' in vidYamlData:
-                    self.crop = []
-                    self.crop.append((vidYamlData['x1'], vidYamlData['y1']))
-                    self.crop.append((vidYamlData['x2'], vidYamlData['y2']))
-                if 'thresh' in vidYamlData:
-                    self.thresh = vidYamlData['thresh']
-
-
-    def initCam(self, camId):
-        self.filename = "cam_" + str(camId)
-        print("Threaded: " + str(self.threaded))
-        if self.threaded:
-            self.capture = QueueVideoStream(camId).start()
-            #time.sleep(1)  # give cam time to autofocus etc. 
-            self.width = int(self.capture.stream.get(cv.CAP_PROP_FRAME_WIDTH ))
-            self.height = int(self.capture.stream.get(cv.CAP_PROP_FRAME_HEIGHT ))
-            print("Exposure: " + str(self.capture.stream.get(cv.CAP_PROP_EXPOSURE)))
-            print("gain: " + str(self.capture.stream.get(cv.CAP_PROP_GAIN)))
-        else:
-            self.capture = cv.VideoCapture(camId)
-            self.width = int(self.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
-            self.height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
-            print("Exposure: " + str(self.capture.get(cv.CAP_PROP_EXPOSURE)))
-            print("gain: " + str(self.capture.get(cv.CAP_PROP_GAIN)))
-            print("AutoExpo: " + str(self.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
-
-            # hardcode resolution for now
-            self.capture.set(3,1920)
-            self.capture.set(4,1080)
-
-
-    def updateCamSettings(self, camConfig):
-        if camConfig.thresh != self.thresh:
-            print("Update Thresh: " + str(camConfig.thresh))
-            self.thresh = camConfig.thresh
-            
-        if camConfig.exposure != self.exposure:
-            print("Update exposure: " + str(camConfig.exposure))
-            self.exposure = camConfig.exposure
-            self.capture.set(cv.CAP_PROP_EXPOSURE, self.exposure)
-
-        if camConfig.gain != self.gain:
-            print("Update gain: " + str(camConfig.gain))
-            self.gain = camConfig.gain
-            self.capture.set(cv.CAP_PROP_GAIN, self.gain)
-
-        if camConfig.autoExposure != self.autoExposure:
-            self.autoExposure = self.autoExposure
-            self.capture.set(cv.CAP_PROP_AUTO_EXPOSURE, self.autoExposure)
-
-
     def nextFrame(self):
-        self.fps.tack()
-        self.frameNr += 1
         self.previousMask = self.mask
 
-        isTrue, self.frame = self.capture.read()
-        if not isTrue:  # end of file
-            if self.endless:
-                self.init()
-                self.setFrame(0)  # seamlessly start at the beginning
-                _, self.frame = self.capture.read()
-            else:
-                return False
+        isTrue, self.frame = self.videoStream.getFrame()
+        if not isTrue:  # end of file or stream
+            return False
 
-        # Crop if user wants to
-        if self.crop != None:
-            x1 = self.crop[0][0]
-            y1 = self.crop[0][1]
-            x2 = self.crop[1][0]
-            y2 = self.crop[1][1]
-            self.frame = self.frame[y1:y2, x1:x2]
+        # reset stats if file rewinds
+        if self.videoStream.frameNr == 0:
+            self.init()
 
         # Mask: Make to grey
         self.mask = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
@@ -268,7 +152,7 @@ class Lazer(object):
     def detectAndDrawHits(self, staticImage=False):
         if not staticImage:
             # wait a bit between detections
-            if (self.frameNr - self.lastFoundFrameNr) < self.graceTime:
+            if (self.videoStream.frameNr - self.lastFoundFrameNr) < self.graceTime:
                 return []
 
             # check if there is any change at all
@@ -279,7 +163,7 @@ class Lazer(object):
 
         recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
-            self.lastFoundFrameNr = self.frameNr
+            self.lastFoundFrameNr = self.videoStream.frameNr
             #print(" --> Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
@@ -340,7 +224,7 @@ class Lazer(object):
         o = 300
 
         color = (255, 255, 255)
-        s = 'Frame: '+ str(self.frameNr)
+        s = 'Frame: '+ str(self.videoStream.frameNr)
         cv.putText(self.frame, s, (0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
         s= "Tresh: " + str(self.thresh) # + "  Glare: " + str(self.glareMeterAvg)
         cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
@@ -352,7 +236,7 @@ class Lazer(object):
         s= "Sharpen: " + str(self.doSharpen)
         cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        s = "FPS: " + str(self.fps.get())
+        s = "FPS: " + str(self.videoStream.fps.get())
         cv.putText(self.frame, s, (o*0,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
         s = "Mode: " + str(self.mode.name)
         cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
@@ -378,10 +262,10 @@ class Lazer(object):
         color = (0, 0, 255)
         if self.mode == Mode.intro:
             s = "Press m to start"
-            cv.putText(self.frame, s, (self.width >> 1,self.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+            cv.putText(self.frame, s, (self.videoStream.width >> 1,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
         elif self.mode == Mode.main:
             s = "Press m to stop"
-            cv.putText(self.frame, s, ((self.width >> 1) - 60,self.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+            cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         if self.centerX != 0:
             cv.circle(self.frame, (self.centerX, self.centerY), self.hitRadius, (0,200,0), 2)
@@ -393,11 +277,11 @@ class Lazer(object):
 
 
     def saveCurrentFrame(self, epilog=''):
-        fname = self.filename + "." + str(self.frameNr) + '.hit.frame' + epilog + '.jpg'
+        fname = self.filename + "." + str(self.videoStream.frameNr) + '.hit.frame' + epilog + '.jpg'
         print("Save Frame to: " + fname)
         cv.imwrite(fname, self.frame)
 
-        fname = self.filename + "." + str(self.frameNr) + '.hit.mask' + epilog + '.jpg' 
+        fname = self.filename + "." + str(self.videoStream.frameNr) + '.hit.mask' + epilog + '.jpg' 
         print("Save Mask to: " + fname)
         cv.imwrite(fname, self.mask)
 
@@ -405,11 +289,6 @@ class Lazer(object):
 
 
     def release(self):
-        if self.threaded:
-            self.capture.stop()
-            self.capture.stream.release()
-        else:
-            self.capture.release()
+        self.videoStream.release()
         if self.showVid:
             cv.destroyAllWindows()
-        print("")
