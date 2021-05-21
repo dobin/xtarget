@@ -86,10 +86,10 @@ class Lazer(object):
         # detection options
         self.graceTime = 10  # How many frames between detections
         
-        self.init()
+        self.resetDynamic()
 
 
-    def init(self):
+    def resetDynamic(self):
         self.glareMeter = 0
         self.glareMeterAvg = 0
         self.hits = []
@@ -124,7 +124,7 @@ class Lazer(object):
 
         # reset stats if file rewinds
         if self.videoStream.frameNr == 0:
-            self.init()
+            self.resetDynamic()
 
         # Mask: Make to grey
         self.mask = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)

@@ -54,6 +54,10 @@ class VideoStream(object):
     def release(self):
         pass
 
+    def setFrame(self, frameNr):
+        # not for live streams, e.g. webcam
+        pass
+
 
 class FileVideoStream(VideoStream):
     def __init__(self, threaded, endless):

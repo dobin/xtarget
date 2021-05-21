@@ -122,9 +122,8 @@ class Playback(object):
 
 
     def handleKey(self, key):
-        if key == ord('c'):  # Crop image
+        if key == ord('c'):  # Crop selection mode
             self.cropModeEnabled = not self.cropModeEnabled
-
             if not self.cropModeEnabled and self.trackerLocB != None:
                 # exited crop mode, set the resulting crop
                 crop = [ 
@@ -133,33 +132,31 @@ class Playback(object):
                 ]
                 self.lazer.videoStream.setCrop(crop)
 
-        if key == ord('t'):  # Target Mode
+        if key == ord('t'):  # Target selection mode
             self.targetModeEnabled = not self.targetModeEnabled
-
             if not self.targetModeEnabled and self.trackerLocB != None:
                 self.lazer.setCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
 
         if key == ord(' '):  # Mode
-            self.lazer.init()
+            self.lazer.resetDynamic()
             if self.lazer.mode == Mode.intro:
                 self.lazer.changeMode(Mode.main)
             elif self.lazer.mode == Mode.main:
                 self.lazer.changeMode(Mode.intro)
 
-        # should not jump frames with a webcam, i dont know whats gonna happen
-        #if self.camId == None:
-        #    if key == ord('d'): # back
-        #        self.lazer.setFrame(self.lazer.videoStream.frameNr-1)
-        #        self.lazer.init()
-        #    elif key == ord('e'): # back 10
-        #        self.lazer.setFrame(self.lazer.videoStream.frameNr-11)
-        #        self.lazer.init()
-        #    elif key == ord('f'): # forward
-        #        #lazer.nextFrame()
-        #        pass
-        #    elif key == ord('p'):  # pause
-        #        self.isPaused = not self.isPaused
-        #        self.lazer.init()
+        # only applicable for video files
+        if key == ord('d'): # back
+            self.lazer.videoStream.setFrame(self.lazer.videoStream.frameNr-1)
+            self.lazer.resetDynamic()
+        elif key == ord('e'): # back 10
+            self.lazer.videoStream.setFrame(self.lazer.videoStream.frameNr-11)
+            self.lazer.resetDynamic()
+        elif key == ord('f'): # forward
+            #lazer.nextFrame()
+            pass
+        elif key == ord('p'):  # pause
+            self.isPaused = not self.isPaused
+            self.lazer.resetDynamic()
 
         # Note: when we press a key in paused mode, we actually go to the next 
         # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
