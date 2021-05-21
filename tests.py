@@ -156,6 +156,22 @@ def testHandleHit(recordedHit, filename, frameNr, yamlFilenameList):
 
 
 def writeVideoInfo(filename):
+    print("Write info of file: " + filename)
+
+    videoStream = FileVideoStream(threaded=True, endless=False)
+    videoStream.initFile(filename)
+    lazer = Lazer(videoStream, saveFrames=False, saveHits=True)
+
+    while True:
+        isTrue = lazer.nextFrame()  # gets next frame, and creates mask
+        if not isTrue:
+            break
+        lazer.detectAndDrawHits()  # all in one for now
+
+    lazer.release()
+
+
+def old(filename):
     print("Analyzing file: " + filename)
     lazer = Lazer(showVid=False)
     lazer.initFile(filename)
@@ -172,8 +188,7 @@ def writeVideoInfo(filename):
             # write all the pics
             cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_mask.jpg", lazer.mask)
             cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_frame.jpg", lazer.frame)
-            with open(filenameBase + "_" + str(lazer.frameNr) + "_info.yaml", 'w') as outfile:
-                yaml.dump(recordedHit.toDict(), outfile)
+
 
     lazer.release()
 

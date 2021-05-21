@@ -66,3 +66,31 @@ Optional:
     * f: go one frame forward
     * e: go 10 frames back
     * p: pause
+
+
+## Other modes
+
+### Display a frame of a video, for research purposes
+
+```
+python xtarget.py --showframe test.mp4 --framenr 123
+```
+
+### Tests
+
+```
+python xtarget.py --tests
+```
+
+### Tests quick
+
+```
+python xtarget.py --testsQuick
+```
+
+## Write video data for tests
+
+```
+python xtarget.py --write test.mp4
+```
+

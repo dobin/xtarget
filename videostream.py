@@ -24,6 +24,10 @@ class VideoStream(object):
             print("Using threads")
         
 
+    def getFilenameBase(self):
+        return os.path.splitext(self.filename)[0]
+
+
     def getFrame(self):
         self.fps.tack()
         self.frameNr += 1
@@ -117,7 +121,7 @@ class CamVideoStream(VideoStream):
 
 
     def initCam(self, camId, resolution):
-        self.filename = "cam_" + str(camId)
+        self.filename = "cam_" + str(camId) + ".mp4"
         print("Initialize the cam. This can take some time...")
         if self.threaded:
             self.inputStream = QueueInputStream(camId)

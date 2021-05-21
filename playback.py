@@ -14,7 +14,7 @@ class Playback(object):
         self.saveFrames = saveFrames
         self.saveHits = saveHits
 
-        self.lazer = Lazer(videoStream, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits)
+        self.lazer = Lazer(videoStream, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro)
         
         self.ui = None
         self.camConfig = None

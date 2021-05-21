@@ -56,14 +56,14 @@ def findContours(mask, minRadius):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, videoStream, thresh=14, showGlare=True, saveFrames=False, saveHits=False):
+    def __init__(self, videoStream, thresh=14, showGlare=True, saveFrames=False, saveHits=False, mode=Mode.main):
         self.capture = None
         self.frame = None
         self.mask = None
         self.previousMask = None
         self.lastFoundFrameNr = 0
         self.showGlare = showGlare
-        self.mode = Mode.intro
+        self.mode = mode
 
         self.videoStream = videoStream
         self.thresh = thresh
@@ -163,7 +163,7 @@ class Lazer(object):
         recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.videoStream.frameNr
-            #print(" --> Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
+            #print(" --> Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
 
@@ -187,7 +187,7 @@ class Lazer(object):
                 self.hits.append(recordedHit)
 
                 if self.saveHits:
-                    self.saveCurrentFrame()
+                    self.saveCurrentFrame(recordedHit)
 
         return recordedHits
 
@@ -271,20 +271,27 @@ class Lazer(object):
 
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
-        #if self.diff is not None:
-        #    cv.imshow('Diff', self.diff)
 
 
-    def saveCurrentFrame(self, epilog=''):
-        fname = self.filename + "." + str(self.videoStream.frameNr) + '.hit.frame' + epilog + '.jpg'
-        print("Save Frame to: " + fname)
+    def saveCurrentFrame(self, recordedHit=None):
+        filenameBase = self.videoStream.getFilenameBase()
+        filenameBase += '_'  + str(self.videoStream.frameNr) + '_'
+
+        print("Saving current frame:")
+        if recordedHit != None:
+            filenameBase += 'hit.'
+            fname = filenameBase + "info.yaml"
+            print("  Save yaml to : " + fname)
+            with open(fname, 'w') as outfile:
+                yaml.dump(recordedHit.toDict(), outfile)
+
+        fname = filenameBase + 'frame.jpg'
+        print("  Save Frame to: " + fname)
         cv.imwrite(fname, self.frame)
 
-        fname = self.filename + "." + str(self.videoStream.frameNr) + '.hit.mask' + epilog + '.jpg' 
-        print("Save Mask to: " + fname)
+        fname = filenameBase + 'mask.jpg' 
+        print("  Save Mask to : " + fname)
         cv.imwrite(fname, self.mask)
-
-        #cv.imwrite(self.filename + "." + str(self.frameNr) + '.diff.jpg' , self.diff)
 
 
     def release(self):
