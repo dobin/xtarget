@@ -5,8 +5,9 @@ import yaml
 import os.path
 import cv2 as cv
 
-from gfxutils import getTime
+from gfxutils import getTime, readVideoFileConfig
 from lazer import Lazer
+from videostream import FileVideoStream
 
 # all recorded with surface book front camera 30fps if not stated otherwise
 tests = [
@@ -107,13 +108,20 @@ def doTests():
         print("FPS: " + result['test'] + ": " + str( int(result['frames'] / result['time']) ))
 
 
-def testcase(filename):
-    print("Test file: " + filename)
-    lazer = Lazer(showVid=False, showGlare=False, threaded=True)
-    lazer.initFile("tests/" + filename + ".mp4")
+def testcase(basename):
+    print("Test file: " + basename)
+    filename = "tests/" + basename + ".mp4"
+
+    videoFileConfig = readVideoFileConfig(filename)
+
+    videoStream = FileVideoStream(threaded=True, endless=False)
+    videoStream.initFile(filename)
+    videoStream.setCrop(videoFileConfig['crop'])
+
+    lazer = Lazer(videoStream, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
 
     # get all testcases to check if all triggered
-    yamlFilenameList = glob.glob('tests/' + filename + "_*.yaml")
+    yamlFilenameList = glob.glob('tests/' + basename + "_*.yaml")
     yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     while True:
@@ -121,44 +129,41 @@ def testcase(filename):
         if not hasFrame:
             break
 
-        # find contours and visualize it in the main frame
         recordedHits = lazer.detectAndDrawHits()
         if len(recordedHits) > 0:
             recordedHit = recordedHits[0]
-            print("Checking dot in frame " + str(lazer.frameNr))
-
-            yamlFilename = "tests/" + filename + "_" + str(lazer.frameNr) + '_info.yaml'
-            if yamlFilename in yamlFilenameList:
-                yamlFilenameList.remove(yamlFilename)
-            else:
-                print("Err: Found dot with no testcase at frame " + str(lazer.frameNr))
-                continue
-
-            #if not os.path.isfile(yamlFilename):
-            #    print("Error: dot detectd, but no tastecase for " + yamlFilename)
-            #    return
-
-            with open(yamlFilename) as file:
-                yamlRecordedHit = yaml.load(file, Loader=yaml.FullLoader)
-
-                if abs(recordedHit.x - yamlRecordedHit['x']) > 10:
-                    print("Error in dot coordinates: ")
-                    print("  recordedHit.x  : " + str(recordedHit.x))
-                    print("  yamlRecordHit.x: " + str(yamlRecordedHit['x']))
-                #else:
-                #    print("  X OK")
-                if abs(recordedHit.y - yamlRecordedHit['y']) > 10:
-                    print("Error in dot coordinates: ")
-                    print("  recordedHit.y  : " + str(recordedHit.y))
-                    print("  yamlRecordHit.y: " + str(yamlRecordedHit['y']))
-                #else:
-                #    print("  Y OK")
+            print("Checking dot in frame " + str(videoStream.frameNr))
+            testHandleHit(recordedHit, basename, videoStream.frameNr, yamlFilenameList)
 
     if len(yamlFilenameList) != 0:
         print("Error: Following dots were not detected: " + str(yamlFilenameList))
-
     lazer.release()
-    return lazer.frameNr
+
+    return videoStream.frameNr
+
+
+def testHandleHit(recordedHit, filename, frameNr, yamlFilenameList):
+    yamlFilename = "tests/" + filename + "_" + str(frameNr) + '_info.yaml'
+    if yamlFilename in yamlFilenameList:
+        yamlFilenameList.remove(yamlFilename)
+    else:
+        print("Err: Found dot with no testcase at frame " + str(frameNr))
+        return
+
+    #if not os.path.isfile(yamlFilename):
+    #    print("Error: dot detectd, but no tastecase for " + yamlFilename)
+    #    return
+
+    with open(yamlFilename) as file:
+        yamlRecordedHit = yaml.load(file, Loader=yaml.FullLoader)
+        if abs(recordedHit.x - yamlRecordedHit['x']) > 10:
+            print("Error in dot coordinates: ")
+            print("  recordedHit.x  : " + str(recordedHit.x))
+            print("  yamlRecordHit.x: " + str(yamlRecordedHit['x']))
+        if abs(recordedHit.y - yamlRecordedHit['y']) > 10:
+            print("Error in dot coordinates: ")
+            print("  recordedHit.y  : " + str(recordedHit.y))
+            print("  yamlRecordHit.y: " + str(yamlRecordedHit['y']))
 
 
 def writeVideoInfo(filename):
@@ -178,7 +183,6 @@ def writeVideoInfo(filename):
             # write all the pics
             cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_mask.jpg", lazer.mask)
             cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_frame.jpg", lazer.frame)
-            #cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_diff.jpg", lazer.diff)
             with open(filenameBase + "_" + str(lazer.frameNr) + "_info.yaml", 'w') as outfile:
                 yaml.dump(recordedHit.toDict(), outfile)
 

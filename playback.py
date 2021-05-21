@@ -14,7 +14,7 @@ class Playback(object):
         self.saveFrames = saveFrames
         self.saveHits = saveHits
 
-        self.lazer = Lazer(videoStream, thresh=thresh, showVid=True, saveFrames=saveFrames, saveHits=saveHits)
+        self.lazer = Lazer(videoStream, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits)
         
         self.ui = None
         self.camConfig = None
@@ -108,6 +108,7 @@ class Playback(object):
         if self.curses:
             self.ui.endCurses()
         self.lazer.release()
+        cv.destroyAllWindows()
         print("Quitting nicely...")
 
 

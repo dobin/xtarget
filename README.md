@@ -15,7 +15,7 @@ The webcam resolution will be set to 1920x1080 by default. Everything else is un
 
 To use webcam with id `0`:
 ```
-python .\xtarget.py --cam --camid 0
+python .\xtarget.py --cam 0
 ```
 
 It starts into the mode `intro` which detects glare. If there is glare, it will be 
@@ -27,7 +27,7 @@ displayed in red on the screen. If you have glare either:
 * if glare is outside target area
   * press `c` to crop the image
 
-Once there is no glare, press `m` to go into `main` mode, where hits are detected. 
+Once there is no glare, press `[space]` to go into `main` mode, where hits are detected. 
 If you have glare, they will count as hits.
 
 Optional:
@@ -54,11 +54,11 @@ Optional:
 * c: crop (c to quit)
 * t: crop (t to quit)
 * q: quit
-* space: pause
+* p: pause
 * j: increase thresh
 * k: decrease thresh
 * g: show glare
-* m: mode
+* space: change mode
 * s: savehits 
 
 * video playback:

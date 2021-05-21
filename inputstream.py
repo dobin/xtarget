@@ -123,5 +123,5 @@ class QueueInputStream(InputStream):
         self.thread.join()
 
     def release(self):
-        self.capture.stop()
-        self.capture.stream.release()
+        self.stop()
+        self.capture.release()

@@ -56,13 +56,12 @@ def findContours(mask, minRadius):
 # - displayFrame()
 # - release()
 class Lazer(object):
-    def __init__(self, videoStream, thresh=14, showVid=True, showGlare=True, saveFrames=False, saveHits=False):
+    def __init__(self, videoStream, thresh=14, showGlare=True, saveFrames=False, saveHits=False):
         self.capture = None
         self.frame = None
         self.mask = None
         self.previousMask = None
         self.lastFoundFrameNr = 0
-        self.showVid = showVid
         self.showGlare = showGlare
         self.mode = Mode.intro
 
@@ -290,5 +289,3 @@ class Lazer(object):
 
     def release(self):
         self.videoStream.release()
-        if self.showVid:
-            cv.destroyAllWindows()
