@@ -8,7 +8,7 @@ from gfxutils import *
 
 
 class Playback(object):
-    def __init__(self, videoStream, thresh, curses=False,  saveFrames=False, saveHits=False):
+    def __init__(self, videoStream, thresh=14, curses=False,  saveFrames=False, saveHits=False):
         self.videoStream = videoStream
         self.curses = curses
         self.saveFrames = saveFrames

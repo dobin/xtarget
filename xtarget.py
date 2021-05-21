@@ -1,4 +1,3 @@
-from videostream import FileVideoStream
 import cv2 as cv
 from collections import deque
 from skimage.metrics import structural_similarity as ssim
@@ -13,6 +12,7 @@ from ui import Gui
 import curses
 from threading import Thread
 from playback import Playback
+from videostream import FileVideoStream, CamVideoStream
 
 
 def showFrame(filename, frameNr):
@@ -72,8 +72,12 @@ def main():
         showFrame(filename, args.nr)
     elif args.cam:
         camId = args.camid
-        playback = Playback(curses=curses, camId=args.camid, saveFrames=args.saveFrames, saveHits=True)
-        playback.init('cam')
+
+        videoStream = CamVideoStream(threaded=False)
+        videoStream.initCam(camId)
+
+        playback = Playback(videoStream, saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback.init()
         playback.play()
 
 
