@@ -9,51 +9,8 @@ from model import *
 logger = logging.getLogger(__name__)
 
 
-# from ball_tracking.py
-def findContours(mask, minRadius):
-    res = []
-
-    # find contours in the mask and initialize the current
-    # (x, y) center of the ball
-    cnts = cv.findContours(mask.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
-    center = None
-
-    # only proceed if at least one contour was found
-    if len(cnts) > 0:
-        # find the largest contour in the mask, then use
-        # it to compute the minimum enclosing circle and
-        # centroid
-        c = max(cnts, key=cv.contourArea)
-        ((x, y), radius) = cv.minEnclosingCircle(c)
-        M = cv.moments(c)
-        if M["m00"] == 0:
-            ##print("DIVISION BY ZERO")
-            return res
-        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-
-        # only proceed if the radius meets a minimum size
-        if radius > minRadius:  # orig: 10, for most: 5
-            radius = int(radius)
-            x = int(x)
-            y = int(y)
-            logger.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
-
-            recordedHit = RecordedHit()
-            recordedHit.x = x
-            recordedHit.y = y
-            recordedHit.center = center
-            recordedHit.radius = radius
-            res.append(recordedHit)
-        else:
-            logger.info("Too small: " + str(radius))
-            pass
-
-    return res
-    
-
 class Lazer(object):
-    """Main hit detection class"""
+    """Detect and visualize hits in a frame with a mask every time nextFrame() is called"""
 
     def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
         self.videoStream = videoStream
@@ -85,7 +42,7 @@ class Lazer(object):
 
 
     def resetDynamic(self):
-        """resets dynamic parameter used to track temporary things, which we may wanna have clean data"""
+        """resets dynamic parameter used to track temporary things (ui cleanup)"""
         self.glareMeter = 0
         self.glareMeterAvg = 0
         self.hits = []
@@ -102,14 +59,14 @@ class Lazer(object):
     
     def setTargetCenter(self, x, y, targetHitRadius):
         """Sets and enabled the target"""
-        logger.debug("Set center: " + str(x) + " / " + str(y))
+        logger.debug("Set target center: " + str(x) + " / " + str(y))
         self.targetCenterX = int(x)
         self.targetCenterY = int(y)
         self.targetHitRadius = int(targetHitRadius)
 
 
     def nextFrame(self):
-        """Retrieves next frame from video/cam, process it and store into self.frame and self.mask"""
+        """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
         self.previousMask = self.mask
 
         isTrue, self.frame = self.videoStream.getFrame()
@@ -156,7 +113,7 @@ class Lazer(object):
             if frameIdentical(self.mask, self.previousMask):
                 return []
 
-        recordedHits = findContours(self.mask, self.minRadius)
+        recordedHits = findHits(self.mask, self.minRadius)
         if len(recordedHits) > 0:
             self.lastFoundHitFrameNr = self.videoStream.frameNr
             logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
@@ -295,3 +252,46 @@ class Lazer(object):
 
     def release(self):
         self.videoStream.release()
+
+
+# from ball_tracking.py
+def findHits(mask, minRadius):
+    res = []
+
+    # find contours in the mask and initialize the current
+    # (x, y) center of the ball
+    cnts = cv.findContours(mask.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    center = None
+
+    # only proceed if at least one contour was found
+    if len(cnts) > 0:
+        # find the largest contour in the mask, then use
+        # it to compute the minimum enclosing circle and
+        # centroid
+        c = max(cnts, key=cv.contourArea)
+        ((x, y), radius) = cv.minEnclosingCircle(c)
+        M = cv.moments(c)
+        if M["m00"] == 0:
+            ##print("DIVISION BY ZERO")
+            return res
+        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+        # only proceed if the radius meets a minimum size
+        if radius > minRadius:  # orig: 10, for most: 5
+            radius = int(radius)
+            x = int(x)
+            y = int(y)
+            logger.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
+
+            recordedHit = RecordedHit()
+            recordedHit.x = x
+            recordedHit.y = y
+            recordedHit.center = center
+            recordedHit.radius = radius
+            res.append(recordedHit)
+        else:
+            logger.info("Too small: " + str(radius))
+            pass
+
+    return res

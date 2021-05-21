@@ -5,7 +5,7 @@ import sys
 from model import CamConfig
 
 
-class Gui(object):
+class CursesUi(object):
     def __init__(self):
         self.camConfig = CamConfig()
         self.selectedLine = 3

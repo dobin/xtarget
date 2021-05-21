@@ -2,25 +2,21 @@ import cv2 as cv
 import numpy as np
 
 from lazer import Lazer
-from ui import Gui
+from cursesui import CursesUi
 from model import Mode
 from gfxutils import *
 
 
 class Playback(object):
-    """Opens a window to play back a video/cam"""
+    """Opens a window to play back a video/cam via VideoStream and uses Lazer for detection and visualization"""
 
-    def __init__(self, videoStream, thresh=14, curses=False,  saveFrames=False, saveHits=False):
+    def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, cursesEnabled=False):
+        """Call init() before use"""
         self.videoStream = videoStream
-        self.curses = curses
-        self.saveFrames = saveFrames
-        self.saveHits = saveHits
-
+        self.cursesEnabled = cursesEnabled
         self.lazer = Lazer(videoStream, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro)
         
-        self.ui = None
-        self.camConfig = None
-        
+        self.cursesUi = None
         self.isPaused = False
         self.cropModeEnabled = False
         self.targetModeEnabled = False
@@ -38,9 +34,10 @@ class Playback(object):
 
 
     def init(self):
-        if self.curses:
-            self.ui = Gui()
-            self.ui.initCurses()
+        """Init I/O"""
+        if self.cursesEnabled:
+            self.cursesUi = CursesUi()
+            self.cursesUi.initCurses()
             
         cv.namedWindow('Video')
         cv.setMouseCallback("Video", self.clickTrack)
@@ -65,8 +62,8 @@ class Playback(object):
                 break
 
         # end
-        if self.curses:
-            self.ui.endCurses()
+        if self.cursesEnabled:
+            self.cursesUi.endCurses()
         self.lazer.release()
         cv.destroyAllWindows()
         print("Quitting nicely...")
@@ -127,11 +124,11 @@ class Playback(object):
 
 
     def handleCurses(self):
-        if not self.curses:
+        if not self.cursesEnabled:
             return
             
         if self.lazer.frameNr % 5 == 0:  # rate limit curses i/o for now
-            camConfig = self.ui.run()
+            camConfig = self.cursesUi.run()
             if camConfig != None:
                 self.lazer.updateCamSettings(camConfig)
 

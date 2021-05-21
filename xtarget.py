@@ -7,7 +7,6 @@ from model import *
 from tests import *
 from gfxutils import *
 
-from ui import Gui
 import curses
 from threading import Thread
 from playback import Playback
@@ -38,20 +37,20 @@ def showFrame(filename, frameNr):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--video", help="Play a video file <file>")
-    ap.add_argument("--cam", help="Capture from webcam id <id>")
-    ap.add_argument("--test", help="Perform analysis of test videos and validate (slow)", action='store_true')
-    ap.add_argument("--testQuick", help="Perform analysis of test pics and validate (fast)", action='store_true')
+    ap.add_argument("--video", help="Play a video file")
+    ap.add_argument("--cam", help="Capture from webcam id (starting at 0)")
+    ap.add_argument("--test", help="Perform analysis of test-videos and validate (slow)", action='store_true')
+    ap.add_argument("--testQuick", help="Perform analysis of test-pics and validate (fast)", action='store_true')
 
-    ap.add_argument("--write", help="Write hits from video file as files")
+    ap.add_argument("--write", help="Write hits from video file as jpg+yaml files")
     
-    ap.add_argument("--showframe", help="Show a specific frame of a video")
+    ap.add_argument("--showframe", help="Show a specific frame (--framenr) of a video")
     ap.add_argument("--framenr", help="frame nr for showframe", type=int)
 
     # options
     ap.add_argument("--saveHits", help='Option: Save jpg+yaml of all detected hits', action='store_true', default=False)
     ap.add_argument("--saveFrames", help='Option: Save jpg+yaml of every frame', action='store_true', default=False)
-    ap.add_argument("--curses", help='Show curses ui in terminal for webcam settings (beta)', action='store_true', default=False)
+    ap.add_argument("--curses", help='Show curses ui in terminal for webcam settings (broken)', action='store_true', default=False)
 
     args = ap.parse_args()
 
