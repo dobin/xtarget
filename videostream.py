@@ -1,5 +1,4 @@
 from math import e
-import yaml
 import cv2 as cv
 import os
 import logging
@@ -57,12 +56,13 @@ class VideoStream(object):
         return frame
 
 
-    def release(self):
-        pass
-
     def setFrame(self, frameNr):
         # not for live streams, e.g. webcam
         pass
+
+
+    def release(self):
+        self.inputStream.release()
 
 
 class FileVideoStream(VideoStream):
@@ -89,10 +89,6 @@ class FileVideoStream(VideoStream):
         self.height = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
 
         return True
-
-
-    def release(self):
-        self.inputStream.release()
 
 
     def getFrame(self):

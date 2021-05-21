@@ -45,21 +45,15 @@ def findContours(mask, minRadius):
             pass
 
     return res
+    
 
-# Order:
-# - init*
-# - nextFrame()
-# - detectAndDrawHits()
-# - displayFrame()
-# - release()
 class Lazer(object):
-    def __init__(self, videoStream, thresh=14, showGlare=True, saveFrames=False, saveHits=False, mode=Mode.main):
+    def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
         self.capture = None
         self.frame = None
         self.mask = None
         self.previousMask = None
         self.lastFoundFrameNr = 0
-        self.showGlare = showGlare
         self.mode = mode
         self.debug = True
 
@@ -95,10 +89,6 @@ class Lazer(object):
 
     def changeMode(self, mode):
         self.mode = mode
-        if mode == Mode.main:
-            self.showGlare = False
-        elif mode == Mode.intro:
-            self.showGlare = True
 
 
     def getDistanceToCenter(self, x, y):
@@ -106,7 +96,7 @@ class Lazer(object):
 
     
     def setCenter(self, x, y, hitRadius):
-        print("Set center: " + str(x) + " / " + str(y))
+        logging.info("Set center: " + str(x) + " / " + str(y))
         self.centerX = int(x)
         self.centerY = int(y)
         self.hitRadius = int(hitRadius)
@@ -126,17 +116,17 @@ class Lazer(object):
         # Mask: Make to grey
         self.mask = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
 
-        # Mask: make it a bit sharper
+        # Mask: remove small artefacts (helpful for removing some glare, and improving detection)
         if self.doSharpen:
             self.mask = cv.medianBlur(self.mask,5)
             # self.mask = cv.blur(self.mask,(5,5))
             self.mask = cv.erode(self.mask, (7,7), iterations=3)
         
-        # Mask: threshold, throw away all bytes below thresh (binary)
+        # Mask: threshold, throw away all bytes below thresh (bytes)
         _, self.mask = cv.threshold(self.mask, 255-self.thresh, 255, cv.THRESH_BINARY)
 
         # Mask: Check if there is glare and handle it (glaremeter, drawing rectangles)
-        if self.showGlare:
+        if self.mode == Mode.intro:
             self.checkGlare()
 
         # if we wanna record everything
@@ -165,23 +155,20 @@ class Lazer(object):
         else:
             return []
 
-        # augment mask,frame,diff with indicators?
-        if staticImage or self.mode == Mode.main: # and not self.showGlare:
+        # augment frame with hit indicators
+        if staticImage or self.mode == Mode.main:
             for recordedHit in recordedHits:
+                # draw
                 cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
                 cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
+                # check if we have a target (to measure distance to)
                 if self.hitRadius > 0:
                     p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
                     r = self.hitRadius
                     d = int(p/r * 100)
                     recordedHit.distance = d
 
-                #cv.circle(self.mask, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
-                #cv.circle(self.mask, recordedHit.center, 5, (0, 250, 50), -1)
-
-                #cv.circle(self.diff, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
-                #cv.circle(self.diff, recordedHit.center, 5, (0, 250, 50), -1)
                 self.hits.append(recordedHit)
 
                 if self.saveHits:
@@ -221,9 +208,8 @@ class Lazer(object):
         o = 300
 
         color = (255, 255, 255)
-        s= "Tresh: " + str(self.thresh) # + "  Glare: " + str(self.glareMeterAvg)
+        s= "Tresh: " + str(self.thresh)
         cv.putText(self.frame, s, (o*0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-
 
         if self.glareMeterAvg > 0:
             cv.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
