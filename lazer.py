@@ -34,13 +34,16 @@ def findContours(mask, minRadius):
 
         # only proceed if the radius meets a minimum size
         if radius > minRadius:  # orig: 10, for most: 5
+            radius = int(radius)
+            x = int(x)
+            y = int(y)
             logger.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
-            recordedHit.x = int(x)
-            recordedHit.y = int(y)
+            recordedHit.x = x
+            recordedHit.y = y
             recordedHit.center = center
-            recordedHit.radius = int(radius)
+            recordedHit.radius = radius
             res.append(recordedHit)
         else:
             logger.info("Too small: " + str(radius))
@@ -72,9 +75,9 @@ class Lazer(object):
         self.doSharpen = True
 
         # data for target
-        self.centerX = 0
-        self.centerY = 0
-        self.hitRadius = 0
+        self.targetCenterX = 0
+        self.targetCenterY = 0
+        self.targetHitRadius = 0
 
         # detection options
         self.graceTime = 10  # How many frames between detections
@@ -94,14 +97,14 @@ class Lazer(object):
 
 
     def getDistanceToCenter(self, x, y):
-        return calculateDistance(self.centerX, self.centerY, x, y)
+        return calculateDistance(self.targetCenterX, self.targetCenterY, x, y)
 
     
-    def setCenter(self, x, y, hitRadius):
+    def setCenter(self, x, y, targetHitRadius):
         logger.info("Set center: " + str(x) + " / " + str(y))
-        self.centerX = int(x)
-        self.centerY = int(y)
-        self.hitRadius = int(hitRadius)
+        self.targetCenterX = int(x)
+        self.targetCenterY = int(y)
+        self.targetHitRadius = int(targetHitRadius)
 
 
     def nextFrame(self):
@@ -165,9 +168,9 @@ class Lazer(object):
                 cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
                 # check if we have a target (to measure distance to)
-                if self.hitRadius > 0:
+                if self.targetHitRadius > 0:
                     p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
-                    r = self.hitRadius
+                    r = self.targetHitRadius
                     d = int(p/r * 100)
                     recordedHit.distance = d
 
@@ -256,8 +259,8 @@ class Lazer(object):
             s = "Press SPACE to stop"
             cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        if self.centerX != 0:
-            cv.circle(self.frame, (self.centerX, self.centerY), self.hitRadius, (0,200,0), 2)
+        if self.targetCenterX != 0:
+            cv.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetHitRadius, (0,200,0), 2)
 
         cv.imshow('Video', self.frame)
         cv.imshow('Mask', self.mask)
