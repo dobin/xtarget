@@ -73,8 +73,8 @@ def main():
     elif args.cam:
         camId = args.camid
 
-        videoStream = CamVideoStream(threaded=False)
-        videoStream.initCam(camId)
+        videoStream = CamVideoStream(threaded=True)
+        videoStream.initCam(camId, resolution={'width': 1920, 'height': 1080})
 
         playback = Playback(videoStream, saveFrames=args.saveFrames, saveHits=args.saveHits)
         playback.init()

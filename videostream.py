@@ -111,28 +111,31 @@ class CamVideoStream(VideoStream):
         self.autoExposure = c.autoExposure
 
 
-    def initCam(self, camId):
+    def initCam(self, camId, resolution):
         self.filename = "cam_" + str(camId)
         print("Initialize the cam. This can take some time...")
         if self.threaded:
             self.inputStream = QueueInputStream(camId)
             self.inputStream.initStream()
+            self.inputStream.capture.set(3,resolution['width'])
+            self.inputStream.capture.set(4,resolution['height'])
             self.inputStream.start()  # start the reader thread
         else:
             self.inputStream = SimpleInputStream(camId)
             self.inputStream.initStream()
 
-        self.width = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
-        self.height = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
+            self.inputStream.capture.set(3,resolution['width'])
+            self.inputStream.capture.set(4,resolution['height'])
+
+        #self.width = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
+        #self.height = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
+        self.width = resolution['width']
+        self.height = resolution['height']
 
         print("Camera settings (most likely wrong): ")
         print("  Exposure: " + str(self.inputStream.capture.get(cv.CAP_PROP_EXPOSURE)))
         print("  Gain    : " + str(self.inputStream.capture.get(cv.CAP_PROP_GAIN)))
         print("  AutoExpo: " + str(self.inputStream.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
-
-        # hardcode resolution for now
-        self.inputStream.capture.set(3,1920)
-        self.inputStream.capture.set(4,1080)
 
 
     def updateCamSettings(self, camConfig):
