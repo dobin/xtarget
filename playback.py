@@ -40,13 +40,13 @@ class Playback(object):
             if event == cv.EVENT_LBUTTONUP:
                 self.trackerLocB = (x,y)
                 self.hitRadius = calculateDistance(self.trackerLocA[0], self.trackerLocA[1], x, y)
-                logging.info("Click Up  : " + str(self.trackerLocB) + " Radius: " + str(self.hitRadius))
+                logger.info("Click Up  : " + str(self.trackerLocB) + " Radius: " + str(self.hitRadius))
             if event == cv.EVENT_LBUTTONDOWN:
                 self.initClick()
                 self.trackerLocA = (x,y)
                 self.trackX = x
                 self.trackY = y
-                logging.info("Click Down: " + str(self.trackerLocA))
+                logger.info("Click Down: " + str(self.trackerLocA))
             elif event == cv.EVENT_MOUSEMOVE:
                 self.trackX = x
                 self.trackY = y

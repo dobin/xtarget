@@ -15,6 +15,7 @@ from videostream import FileVideoStream, CamVideoStream
 
 import logging
 
+logger = logging.getLogger(__name__)
 
 
 def showFrame(filename, frameNr):

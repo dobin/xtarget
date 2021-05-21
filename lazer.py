@@ -6,6 +6,8 @@ import logging
 from gfxutils import *
 from model import *
 
+logger = logging.getLogger(__name__)
+
 
 # from ball_tracking.py
 def findContours(mask, minRadius):
@@ -32,7 +34,7 @@ def findContours(mask, minRadius):
 
         # only proceed if the radius meets a minimum size
         if radius > minRadius:  # orig: 10, for most: 5
-            logging.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
+            logger.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
             recordedHit.x = int(x)
@@ -41,7 +43,7 @@ def findContours(mask, minRadius):
             recordedHit.radius = int(radius)
             res.append(recordedHit)
         else:
-            logging.info("Too small: " + str(radius))
+            logger.info("Too small: " + str(radius))
             pass
 
     return res
@@ -96,7 +98,7 @@ class Lazer(object):
 
     
     def setCenter(self, x, y, hitRadius):
-        logging.info("Set center: " + str(x) + " / " + str(y))
+        logger.info("Set center: " + str(x) + " / " + str(y))
         self.centerX = int(x)
         self.centerY = int(y)
         self.hitRadius = int(hitRadius)
@@ -151,7 +153,7 @@ class Lazer(object):
         recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.videoStream.frameNr
-            logging.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
+            logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
 
@@ -265,20 +267,20 @@ class Lazer(object):
         filenameBase = self.videoStream.getFilenameBase()
         filenameBase += '_'  + str(self.videoStream.frameNr) + '_'
 
-        logging.info("Saving current frame:")
+        logger.info("Saving current frame:")
         if recordedHit != None:
             filenameBase += 'hit.'
             fname = filenameBase + "info.yaml"
-            logging.info("  Save yaml to : " + fname)
+            logger.info("  Save yaml to : " + fname)
             with open(fname, 'w') as outfile:
                 yaml.dump(recordedHit.toDict(), outfile)
 
         fname = filenameBase + 'frame.jpg'
-        logging.info("  Save Frame to: " + fname)
+        logger.info("  Save Frame to: " + fname)
         cv.imwrite(fname, self.frame)
 
         fname = filenameBase + 'mask.jpg' 
-        logging.info("  Save Mask to : " + fname)
+        logger.info("  Save Mask to : " + fname)
         cv.imwrite(fname, self.mask)
 
 

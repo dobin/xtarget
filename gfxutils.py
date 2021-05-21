@@ -5,6 +5,8 @@ import os
 import yaml
 import logging
 
+logger = logging.getLogger(__name__)
+
 def getTime():
     return time.time()
     #returm time.process_time()
@@ -28,19 +30,19 @@ def readVideoFileConfig(filename):
     # check for crop settings for file
     vidYaml = filename +'.yaml'
     if os.path.isfile(vidYaml):
-        logging.info("Opening video config file: " + vidYaml)
+        logger.info("Opening video config file: " + vidYaml)
         with open(vidYaml) as file:
             vidYamlData = yaml.load(file, Loader=yaml.FullLoader)
 
             crop = []
             if 'x1' in vidYamlData:
-                logging.info("  Has Croppings")
+                logger.info("  Has Croppings")
                 crop.append((vidYamlData['x1'], vidYamlData['y1']))
                 crop.append((vidYamlData['x2'], vidYamlData['y2']))
             config['crop'] = crop
 
             if 'thresh' in vidYamlData:
-                logging.info("  Has Tresh")
+                logger.info("  Has Tresh")
                 config['thresh'] = vidYamlData['thresh']
 
             return config
