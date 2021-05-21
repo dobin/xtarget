@@ -43,47 +43,36 @@ def doTestsQuick():
         print("Times: " + result['test'] + ": " + str( result['time'] ))
 
 
-def testcaseQuick(filename, showVid=False): 
-    print("Test file: " + filename)
-    lazer = Lazer(showVid=showVid, showGlare=False, saveFrames=False, saveHits=False)
+def testcaseQuick(basename):
+    print("Test file: " + basename)
+    filename = "tests/" + basename + ".mp4"
+
+    videoFileConfig = readVideoFileConfig(filename)
+
+    videoStream = FileVideoStream(threaded=False, endless=False)
+    videoStream.setCrop(videoFileConfig['crop'])
+
+    lazer = Lazer(videoStream, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
     
     # get all testcases to check if all triggered
-    yamlFilenameList = glob.glob('tests/' + filename + "_*.yaml")
+    yamlFilenameList = glob.glob('tests/' + basename + "_*.yaml")
     yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     for yamlFile in yamlFilenameList:
         print("  YamlFile: " + yamlFile)
-        lazer.initFile("tests/" + filename + ".mp4")
+        videoStream.initFile(filename)
 
         frameNr = int(yamlFile.split('_')[-2])
-        lazer.setFrame(frameNr)
-        hasFrame = lazer.nextFrame()
+        videoStream.setFrame(frameNr)
+        lazer.nextFrame()
 
-        # find contours and visualize it in the main frame
         recordedHits = lazer.detectAndDrawHits(staticImage=True)
         if len(recordedHits) > 0:
             recordedHit = recordedHits[0]
-            print("Checking dot in frame " + str(lazer.frameNr))
-
-            yamlFilename = "tests/" + filename + "_" + str(lazer.frameNr) + '_info.yaml'
-            if not os.path.isfile(yamlFilename):
-                print("Error: dot detectd, but no tastecase for " + yamlFilename)
-                return
-
-            with open(yamlFilename) as file:
-                yamlRecordedHit = yaml.load(file, Loader=yaml.FullLoader)
-
-                if abs(recordedHit.x - yamlRecordedHit['x']) > 10:
-                    print("Error in dot coordinates: ")
-                    print("  recordedHit.x  : " + str(recordedHit.x))
-                    print("  yamlRecordHit.x: " + str(yamlRecordedHit['x']))
-                if abs(recordedHit.y - yamlRecordedHit['y']) > 10:
-                    print("Error in dot coordinates: ")
-                    print("  recordedHit.y  : " + str(recordedHit.y))
-                    print("  yamlRecordHit.y: " + str(yamlRecordedHit['y']))
+            print("Checking dot in frame " + str(videoStream.frameNr))
+            testHandleHit(recordedHit, basename, videoStream.frameNr, yamlFilenameList)
         else:
-            print("No hits :(")
-
+            print("Err: No hits detected :( ")
         lazer.release()
 
     return 0

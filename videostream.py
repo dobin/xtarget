@@ -20,7 +20,8 @@ class VideoStream(object):
         self.height = None
 
         self.fps = Fps()
-        print("Threaded: " + str(threaded))
+        if threaded:
+            print("Using threads")
         
 
     def getFrame(self):

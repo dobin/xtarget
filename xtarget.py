@@ -35,10 +35,11 @@ def main():
     ap.add_argument("-v", "--video", help="Play a video file <file>")
     ap.add_argument("-c", "--cam", help="Capture from webcam id <id>")
 
-    ap.add_argument("-t", "--test", help="test", action='store_true')
+    ap.add_argument("-t", "--test", help="Perform analysis of test videos and validate (slow)", action='store_true')
+    ap.add_argument("-q", "--testQuick", help="Perform analysis of test pics and validate (fast)", action='store_true')
+
     #ap.add_argument("-w", "--write", help="write", action='store_true')
-    #    ap.add_argument("-s", "--showframe", help="showframe", action='store_true')
-    #ap.add_argument("-q", "--testQuick", action='store_true')
+    #ap.add_argument("-s", "--showframe", help="showframe", action='store_true')
     #ap.add_argument("-n", "--nr", help="frame nr", type=int)
     #ap.add_argument("--camid", help="Cam", type=int)
 
@@ -70,11 +71,11 @@ def main():
         playback.init()
         playback.play()
 
-
     elif args.test:
         doTests()
     elif args.testQuick:
         doTestsQuick()
+
     elif args.write:
         writeVideoInfo(filename)
     elif args.showframe:
