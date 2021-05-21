@@ -2,6 +2,7 @@ from math import e
 import yaml
 import cv2 as cv
 import os
+import logging
 
 from fps import Fps
 from inputstream import SimpleInputStream, QueueInputStream
@@ -21,7 +22,7 @@ class VideoStream(object):
 
         self.fps = Fps()
         if threaded:
-            print("Using threads")
+            logging.info("Using threads")
         
 
     def getFilenameBase(self):
@@ -72,7 +73,7 @@ class FileVideoStream(VideoStream):
 
     def initFile(self, filename):
         if not os.path.isfile(filename):
-            print("File not found")
+            logging.error("File not found: " + filename)
             return False
         self.filename = filename
 
@@ -141,24 +142,24 @@ class CamVideoStream(VideoStream):
         self.width = resolution['width']
         self.height = resolution['height']
 
-        print("Camera settings (most likely wrong): ")
-        print("  Exposure: " + str(self.inputStream.capture.get(cv.CAP_PROP_EXPOSURE)))
-        print("  Gain    : " + str(self.inputStream.capture.get(cv.CAP_PROP_GAIN)))
-        print("  AutoExpo: " + str(self.inputStream.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
+        logging.debug("Camera settings (most likely wrong): ")
+        logging.debug("  Exposure: " + str(self.inputStream.capture.get(cv.CAP_PROP_EXPOSURE)))
+        logging.debug("  Gain    : " + str(self.inputStream.capture.get(cv.CAP_PROP_GAIN)))
+        logging.debug("  AutoExpo: " + str(self.inputStream.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
 
 
     def updateCamSettings(self, camConfig):
         if camConfig.thresh != self.thresh:
-            print("Update Thresh: " + str(camConfig.thresh))
+            logging.info("Update Thresh: " + str(camConfig.thresh))
             self.thresh = camConfig.thresh
             
         if camConfig.exposure != self.exposure:
-            print("Update exposure: " + str(camConfig.exposure))
+            logging.info("Update exposure: " + str(camConfig.exposure))
             self.exposure = camConfig.exposure
             self.capture.set(cv.CAP_PROP_EXPOSURE, self.exposure)
 
         if camConfig.gain != self.gain:
-            print("Update gain: " + str(camConfig.gain))
+            logging.info("Update gain: " + str(camConfig.gain))
             self.gain = camConfig.gain
             self.capture.set(cv.CAP_PROP_GAIN, self.gain)
 

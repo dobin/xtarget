@@ -1,10 +1,7 @@
-from enum import auto
 import cv2 as cv
 import imutils
-from collections import deque
-import os.path
 import yaml
-import time
+import logging
 
 from gfxutils import *
 from model import *
@@ -35,7 +32,7 @@ def findContours(mask, minRadius):
 
         # only proceed if the radius meets a minimum size
         if radius > minRadius:  # orig: 10, for most: 5
-            #print("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
+            logging.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
             recordedHit.x = int(x)
@@ -44,7 +41,7 @@ def findContours(mask, minRadius):
             recordedHit.radius = int(radius)
             res.append(recordedHit)
         else:
-            print("Too small: " + str(radius))
+            logging.info("Too small: " + str(radius))
             pass
 
     return res
@@ -164,7 +161,7 @@ class Lazer(object):
         recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
             self.lastFoundFrameNr = self.videoStream.frameNr
-            #print(" --> Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
+            logging.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
 
@@ -282,20 +279,20 @@ class Lazer(object):
         filenameBase = self.videoStream.getFilenameBase()
         filenameBase += '_'  + str(self.videoStream.frameNr) + '_'
 
-        print("Saving current frame:")
+        logging.info("Saving current frame:")
         if recordedHit != None:
             filenameBase += 'hit.'
             fname = filenameBase + "info.yaml"
-            print("  Save yaml to : " + fname)
+            logging.info("  Save yaml to : " + fname)
             with open(fname, 'w') as outfile:
                 yaml.dump(recordedHit.toDict(), outfile)
 
         fname = filenameBase + 'frame.jpg'
-        print("  Save Frame to: " + fname)
+        logging.info("  Save Frame to: " + fname)
         cv.imwrite(fname, self.frame)
 
         fname = filenameBase + 'mask.jpg' 
-        print("  Save Mask to : " + fname)
+        logging.info("  Save Mask to : " + fname)
         cv.imwrite(fname, self.mask)
 
 

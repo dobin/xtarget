@@ -13,6 +13,9 @@ from threading import Thread
 from playback import Playback
 from videostream import FileVideoStream, CamVideoStream
 
+import logging
+
+
 
 def showFrame(filename, frameNr):
     print("Show frame: " + filename + " at " + str(frameNr))
@@ -51,12 +54,15 @@ def main():
 
     args = ap.parse_args()
 
+    logging.basicConfig(level=logging.INFO)
+
     if args.video is not None:
         filename = args.video
         videoFileConfig = readVideoFileConfig(filename)
 
         videoStream = FileVideoStream(threaded=False, endless=True)
-        videoStream.initFile(filename)
+        if not videoStream.initFile(filename):
+            return
         videoStream.setCrop(videoFileConfig['crop'])
 
         playback = Playback(videoStream, thresh=videoFileConfig['thresh'], saveFrames=args.saveFrames, saveHits=args.saveHits)

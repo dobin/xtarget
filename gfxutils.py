@@ -3,7 +3,7 @@ import numpy as np
 import time
 import os
 import yaml
-
+import logging
 
 def getTime():
     return time.time()
@@ -28,17 +28,19 @@ def readVideoFileConfig(filename):
     # check for crop settings for file
     vidYaml = filename +'.yaml'
     if os.path.isfile(vidYaml):
-        print("Opening video config file...")
+        logging.info("Opening video config file: " + vidYaml)
         with open(vidYaml) as file:
             vidYamlData = yaml.load(file, Loader=yaml.FullLoader)
 
             crop = []
             if 'x1' in vidYamlData:
+                logging.info("  Has Croppings")
                 crop.append((vidYamlData['x1'], vidYamlData['y1']))
                 crop.append((vidYamlData['x2'], vidYamlData['y2']))
             config['crop'] = crop
 
             if 'thresh' in vidYamlData:
+                logging.info("  Has Tresh")
                 config['thresh'] = vidYamlData['thresh']
 
             return config
