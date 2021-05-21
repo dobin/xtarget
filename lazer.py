@@ -54,20 +54,16 @@ def findContours(mask, minRadius):
 
 class Lazer(object):
     def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
-        self.capture = None
-        self.frame = None
-        self.mask = None
-        self.previousMask = None
-        self.lastFoundFrameNr = 0
-        self.mode = mode
-        self.debug = True
-
         self.videoStream = videoStream
         self.thresh = thresh
-
-        # debug options
         self.saveFrames = saveFrames
         self.saveHits = saveHits
+        self.mode = mode
+
+        self.frame = None  # from nextFrame(): the frame from the cam/video
+        self.mask = None  # from nextFrame(): mask generated based on frame
+        self.previousMask = None  # mask of previous iteration of the nextFrame() loop
+        self.debug = True
 
         # decoding options
         self.minRadius = 1.0
@@ -81,15 +77,17 @@ class Lazer(object):
 
         # detection options
         self.graceTime = 10  # How many frames between detections
-        
+        self.lastFoundHitFrameNr = 0  # Track when last hit was found
+
         self.resetDynamic()
 
 
     def resetDynamic(self):
+        """resets dynamic parameter used to track temporary things, which we may wanna have clean data"""
         self.glareMeter = 0
         self.glareMeterAvg = 0
         self.hits = []
-        self.lastFoundFrameNr = 0
+        self.lastFoundHitFrameNr = 0
 
 
     def changeMode(self, mode):
@@ -100,14 +98,16 @@ class Lazer(object):
         return calculateDistance(self.targetCenterX, self.targetCenterY, x, y)
 
     
-    def setCenter(self, x, y, targetHitRadius):
-        logger.info("Set center: " + str(x) + " / " + str(y))
+    def setTargetCenter(self, x, y, targetHitRadius):
+        """Sets and enabled the target"""
+        logger.debug("Set center: " + str(x) + " / " + str(y))
         self.targetCenterX = int(x)
         self.targetCenterY = int(y)
         self.targetHitRadius = int(targetHitRadius)
 
 
     def nextFrame(self):
+        """Retrieves next frame from video/cam, process it and store into self.frame and self.mask"""
         self.previousMask = self.mask
 
         isTrue, self.frame = self.videoStream.getFrame()
@@ -142,9 +142,10 @@ class Lazer(object):
 
 
     def detectAndDrawHits(self, staticImage=False):
+        """Use self.mask to detect hits in the picture and highlight them"""
         if not staticImage:
             # wait a bit between detections
-            if (self.videoStream.frameNr - self.lastFoundFrameNr) < self.graceTime:
+            if (self.videoStream.frameNr - self.lastFoundHitFrameNr) < self.graceTime:
                 return []
 
             # check if there is any change at all
@@ -155,7 +156,7 @@ class Lazer(object):
 
         recordedHits = findContours(self.mask, self.minRadius)
         if len(recordedHits) > 0:
-            self.lastFoundFrameNr = self.videoStream.frameNr
+            self.lastFoundHitFrameNr = self.videoStream.frameNr
             logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
         else:
             return []
@@ -183,6 +184,7 @@ class Lazer(object):
 
 
     def checkGlare(self):
+        """Check self.frame for glare, and highlight it"""
         # threshold the difference image, followed by finding contours to
         # obtain the regions of the two input images that differ
         #thresh = cv.threshold(diff, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
@@ -210,6 +212,7 @@ class Lazer(object):
 
 
     def displayFrame(self):
+        """Displays the current frame in the window, with UI data written on it"""
         o = 300
 
         color = (255, 255, 255)
@@ -267,6 +270,7 @@ class Lazer(object):
 
 
     def saveCurrentFrame(self, recordedHit=None):
+        """Save current frame as file"""
         filenameBase = self.videoStream.getFilenameBase()
         filenameBase += '_'  + str(self.videoStream.frameNr) + '_'
 

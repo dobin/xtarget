@@ -136,7 +136,7 @@ class Playback(object):
         if key == ord('t'):  # Target selection mode
             self.targetModeEnabled = not self.targetModeEnabled
             if not self.targetModeEnabled and self.trackerLocB != None:
-                self.lazer.setCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
+                self.lazer.setTargetCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
 
         if key == ord(' '):  # Mode
             self.lazer.resetDynamic()
