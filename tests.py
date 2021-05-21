@@ -9,8 +9,9 @@ from gfxutils import getTime, readVideoFileConfig
 from lazer import Lazer
 from videostream import FileVideoStream
 
-# all recorded with surface book front camera 30fps if not stated otherwise
+
 tests = [
+    # surface book
     'test3',        # room 1
     'test4_floor',  # room 1 on the floor with reflections (glare)
     'test11',       # room 2
@@ -21,9 +22,17 @@ tests = [
     'test22',       # oneplus 8 pro phone cam, 60fps, far, dark
     'test30',       # tested before, normal
     'test31',       # more wide view, but normal
-    'test42_out',       # gopro 120fps
-]
 
+    # gopro hero4
+    'test42_out',       # 120fps
+    
+    # logitech c920
+    # 'test52', # its .mkv
+    'test60_itarget',
+    'test62_paper',
+    'test63_camfar',
+    'test64_camfarer'
+]
 
 
 def doTestsQuick():
@@ -133,10 +142,15 @@ def testcase(basename):
 
 def testHandleHit(recordedHit, filename, frameNr, yamlFilenameList):
     yamlFilename = "tests/" + filename + "_" + str(frameNr) + '_info.yaml'
+    yamlFilename2 = "tests/" + filename + "_" + str(frameNr) + '_hit.info.yaml'
     if yamlFilename in yamlFilenameList:
+        yamlFilenameList.remove(yamlFilename)
+    elif yamlFilename2 in yamlFilenameList:  # FIXME workaround for different filenames
+        yamlFilename = yamlFilename2
         yamlFilenameList.remove(yamlFilename)
     else:
         print("Err: Found dot with no testcase at frame " + str(frameNr))
+        print("  " + yamlFilename)
         return
 
     #if not os.path.isfile(yamlFilename):
