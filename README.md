@@ -53,7 +53,8 @@ Optional:
   * videos make opencv crash because of audio track. Remove audio with: 
     * `.\ffmpeg.exe -i .\test.mp4 -vcodec copy -an test_out.mp4`
   * mine cannot do livestreams :-(
-
+* Logitech C920 works much better with the [old drivers](https://www.techspot.com/drivers/driver/file/information/17895/) (Logitech Webcam Software 2.80.853.0a)
+  * And has a great tool to adjust exposure, gain and autolightning while OpenCV is running
 
 ## Keyboard Shortcuts
 
