@@ -4,7 +4,7 @@ import argparse
 
 from lazer import Lazer
 from model import *
-from tests import *
+from videotests import *
 from gfxutils import *
 
 import curses

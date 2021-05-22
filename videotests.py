@@ -34,6 +34,7 @@ tests = [
     'test64_camfarer'
 ]
 
+BASEDIR = "test_video/"
 
 def doTestsQuick():
     results = []
@@ -54,7 +55,7 @@ def doTestsQuick():
 
 def testcaseQuick(basename):
     print("Test file: " + basename)
-    filename = "tests/" + basename + ".mp4"
+    filename = BASEDIR + basename + ".mp4"
 
     videoFileConfig = readVideoFileConfig(filename)
 
@@ -64,7 +65,7 @@ def testcaseQuick(basename):
     lazer = Lazer(videoStream, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
     
     # get all testcases to check if all triggered
-    yamlFilenameList = glob.glob('tests/' + basename + "_*.yaml")
+    yamlFilenameList = glob.glob(BASEDIR + basename + "_*.yaml")
     yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     for yamlFile in yamlFilenameList:
@@ -108,7 +109,7 @@ def doTests():
 
 def testcase(basename):
     print("Test file: " + basename)
-    filename = "tests/" + basename + ".mp4"
+    filename = BASEDIR + basename + ".mp4"
 
     videoFileConfig = readVideoFileConfig(filename)
 
@@ -119,7 +120,7 @@ def testcase(basename):
     lazer = Lazer(videoStream, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
 
     # get all testcases to check if all triggered
-    yamlFilenameList = glob.glob('tests/' + basename + "_*.yaml")
+    yamlFilenameList = glob.glob(BASEDIR + basename + "_*.yaml")
     yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     while True:
@@ -141,8 +142,8 @@ def testcase(basename):
 
 
 def testHandleHit(recordedHit, filename, frameNr, yamlFilenameList):
-    yamlFilename = "tests/" + filename + "_" + str(frameNr) + '_info.yaml'
-    yamlFilename2 = "tests/" + filename + "_" + str(frameNr) + '_hit.info.yaml'
+    yamlFilename = BASEDIR + filename + "_" + str(frameNr) + '_info.yaml'
+    yamlFilename2 = BASEDIR + filename + "_" + str(frameNr) + '_hit.info.yaml'
     if yamlFilename in yamlFilenameList:
         yamlFilenameList.remove(yamlFilename)
     elif yamlFilename2 in yamlFilenameList:  # FIXME workaround for different filenames

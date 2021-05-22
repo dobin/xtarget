@@ -1,7 +1,7 @@
 experimentation/*
 *.pyc
-tests*/*
+test_*/*
 *.jpg
 bak/*
 docs/*
-gopro/*
+

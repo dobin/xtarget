@@ -30,19 +30,3 @@ class Fps(object):
         else:
             return int(1/avg)
 
-
-def main3():
-    fps = Fps()
-    fps.ticklistSize = 3
-
-    fps.tack()
-    time.sleep(0.1)
-    fps.tack()
-    time.sleep(0.1)
-    fps.tack()
-    time.sleep(0.1)
-    fps.tack()
-    time.sleep(0.1)
-    print("FPS: " + str(fps.get()))
-
-# main3()

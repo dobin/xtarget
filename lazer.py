@@ -282,7 +282,7 @@ def findHits(mask, minRadius):
             radius = int(radius)
             x = int(x)
             y = int(y)
-            logger.info("Found dot with radius " + str(radius) + "at  X:" + str(x) + "  Y:" + str(y))
+            logger.info("Found dot with radius " + str(radius) + " at  X:" + str(x) + "  Y:" + str(y))
 
             recordedHit = RecordedHit()
             recordedHit.x = x
