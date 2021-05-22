@@ -21,6 +21,7 @@ class Lazer(object):
 
         self.frame = None  # from nextFrame(): the frame from the cam/video
         self.mask = None  # from nextFrame(): mask generated based on frame
+        self.mask2 = None  # temp
         self.previousMask = None  # mask of previous iteration of the nextFrame() loop
         self.debug = True
 
@@ -30,9 +31,10 @@ class Lazer(object):
         self.doSharpen = True
 
         # data for target
-        self.targetCenterX = 0
-        self.targetCenterY = 0
-        self.targetHitRadius = 0
+        self.targetCenterX = None
+        self.targetCenterY = None
+        self.targetHitRadius = None
+        self.targetThresh = 60  # hopyfully sane initial value, going up
 
         # detection options
         self.graceTime = 10  # How many frames between detections
@@ -51,6 +53,9 @@ class Lazer(object):
 
     def changeMode(self, mode):
         self.mode = mode
+        if self.mode == Mode.main:
+            # take over target, if any
+            self.findTargets(save=True)
 
 
     def getDistanceToCenter(self, x, y):
@@ -85,13 +90,16 @@ class Lazer(object):
             self.mask = cv.medianBlur(self.mask,5)
             # self.mask = cv.blur(self.mask,(5,5))
             self.mask = cv.erode(self.mask, (7,7), iterations=3)
-        
+
+        # save copy of mask for now
+        self.mask2 = self.mask.copy()
         # Mask: threshold, throw away all bytes below thresh (bytes)
         _, self.mask = cv.threshold(self.mask, 255-self.thresh, 255, cv.THRESH_BINARY)
 
         # Mask: Check if there is glare and handle it (glaremeter, drawing rectangles)
         if self.mode == Mode.intro:
             self.checkGlare()
+            self.findTargets()
 
         # if we wanna record everything
         if self.saveFrames:
@@ -170,6 +178,36 @@ class Lazer(object):
         self.glareMeterAvg = int(self.glareMeterAvg + self.glareMeter) >> 1
 
 
+    def findTargets(self, save=False):
+        if self.targetThresh > 150:
+            # give up here
+            return
+
+        thresh = cv.threshold(self.mask2, self.targetThresh, 255, cv.THRESH_BINARY_INV)[1]
+        #cv.imshow('thresh1', thresh)
+
+        cnts = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)  # use RETR_TREE here to get all
+        cnts = imutils.grab_contours(cnts)
+        reliefs = []
+        for c in cnts:
+            #relief = findTriangles(c)
+            relief = findCircles(c)
+            if relief == None:
+                continue
+            cv.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
+            #cv.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
+            reliefs.append(relief)
+
+        if len(reliefs) == 0:
+            self.targetThresh += 1
+
+        if save:
+            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
+            self.targetCenterX = reliefs[0].centerX
+            self.targetCenterY = reliefs[0].centerY
+            self.targetHitRadius = int(reliefs[0].w / 2)
+
+
     def displayFrame(self):
         """Displays the current frame in the window, with UI data written on it"""
         o = 300
@@ -221,11 +259,12 @@ class Lazer(object):
             s = "Press SPACE to stop"
             cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        if self.targetCenterX != 0:
+        if self.targetCenterX != None:
             cv.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetHitRadius, (0,200,0), 2)
 
         cv.imshow('Video', self.frame)
-        cv.imshow('Mask', self.mask)
+        if self.debug:
+            cv.imshow('Mask', self.mask)
 
 
     def saveCurrentFrame(self, recordedHit=None):
@@ -295,3 +334,92 @@ def findHits(mask, minRadius):
             pass
 
     return res
+
+
+class Relief():
+    def __init__(self): 
+        self.x = None
+        self.y = None
+        self.w = None
+        self.h = None
+
+        self.centerX = None
+        self.centerY = None
+
+
+def findTriangles(c):
+    peri = cv.arcLength(c, True)
+    approx = cv.approxPolyDP(c, 0.04 * peri, True)
+
+    # if the shape is a triangle, it will have 3 vertices
+    if len(approx) != 3:
+        return None
+
+    # compute the bounding box of the contour and use the
+    # bounding box to compute the aspect ratio
+    (x, y, w, h) = cv.boundingRect(approx)
+
+    # probably too small
+    if w < 100 or h < 100:
+        return None
+
+    # not similar height/width
+    ar = w / float(h)
+    if ar < 0.9 or ar > 1.3:
+        return None
+
+    relief = Relief()
+    relief.x = x
+    relief.y = y
+    relief.w = w
+    relief.h = h
+
+    # compute the center of the contour, then detect the name of the
+    # shape using only the contour
+    M = cv.moments(c)
+    if M["m00"] != 0:
+        cX = int((M["m10"] / M["m00"]))
+        cY = int((M["m01"] / M["m00"]))
+        relief.centerX = cX
+        relief.centerY = cY
+    else:
+        print("Division by zero")
+
+    return relief
+
+
+def findCircles(c):
+    # initialize the shape name and approximate the contour
+    peri = cv.arcLength(c, True)
+    approx = cv.approxPolyDP(c, 0.04 * peri, True)
+
+    # lots of vertices pls
+    if len(approx) < 7:
+        return None
+
+    # compute the bounding box of the contour and use the
+    # bounding box to compute the aspect ratio
+    (x, y, w, h) = cv.boundingRect(approx)
+
+    # probably too small
+    if w < 100 or h < 100:
+        #print("Too small: {}/{}".format(w, h))
+        return None
+
+    relief = Relief()
+    relief.x = x
+    relief.y = y
+    relief.w = w
+    relief.h = h
+
+    # compute the center of the contour
+    M = cv.moments(c)
+    if M["m00"] != 0:
+        cX = int((M["m10"] / M["m00"]))
+        cY = int((M["m01"] / M["m00"]))
+        relief.centerX = cX
+        relief.centerY = cY
+    else:
+        print("Division by zero")
+
+    return relief
