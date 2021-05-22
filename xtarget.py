@@ -45,13 +45,14 @@ def main():
     ap.add_argument("--write", help="Write hits from video file as jpg+yaml files")
     
     ap.add_argument("--showframe", help="Show a specific frame (--framenr) of a video")
-    ap.add_argument("--framenr", help="frame nr for showframe", type=int)
+    ap.add_argument("--framenr", help="Showframe: frame nr to display", type=int)
 
     # options
     ap.add_argument("--saveHits", help='Option: Save jpg+yaml of all detected hits', action='store_true', default=False)
     ap.add_argument("--saveFrames", help='Option: Save jpg+yaml of every frame', action='store_true', default=False)
-    ap.add_argument("--curses", help='Show curses ui in terminal for webcam settings (broken)', action='store_true', default=False)
-
+    ap.add_argument("--curses", help='Camera option: Show curses ui in terminal for webcam settings (broken)', action='store_true', default=False)
+    ap.add_argument("--width", help="Camera option: resolution width", type=int)
+    ap.add_argument("--height", help="Camera option: resolution height", type=int)
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -72,8 +73,12 @@ def main():
     elif args.cam is not None:
         camId = int(args.cam)
         videoStream = CamVideoStream(threaded=True)
-        videoStream.initCam(camId, resolution={'width': 1920, 'height': 1080})
 
+        resolution={'width': 1920, 'height': 1080}
+        if args.width != None and args.height != None:
+            resolution={'width': args.width, 'height': args.height}
+
+        videoStream.initCam(camId, resolution=resolution)
         playback = Playback(videoStream, saveFrames=args.saveFrames, saveHits=args.saveHits)
         playback.init()
         playback.play()
