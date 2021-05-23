@@ -8,11 +8,19 @@ from queue import Queue
 class InputStream():
     def __init__(self, path):
         self.path = path
+        if isinstance(path, int):
+            self.isCam = True
+        else:
+            self.isCam = False
 
 
     def initStream(self):
-        self.capture = cv2.VideoCapture(self.path)
-
+        if self.isCam:
+            # use CAP_DSHOW for cams, as it has a MUCH faster initialization
+            # Alternatively, CAP_MSMF may provide better performance once initialized.
+            self.capture = cv2.VideoCapture(self.path, cv2.CAP_DSHOW)
+        else:
+            self.capture = cv2.VideoCapture(self.path)
 
     def read(self):
         # return next frame in the queue
