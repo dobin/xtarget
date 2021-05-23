@@ -47,8 +47,7 @@ class Playback(object):
         """Play the video/cam source from self.videoStream with hit detection as a window in a endless loop"""
         while True:
             self.lazer.nextFrame()  # gets next frame, and creates mask
-            self.lazer.detectAndDrawHits()  # all in one for now
-            self.drawTrackings()  # needs to be before displayFrame
+            self.drawTrackings()  # local trackings. needs to be before displayFrame
             self.lazer.displayFrame()  # draw ui n stuff
 
             # input

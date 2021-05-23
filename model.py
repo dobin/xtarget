@@ -30,3 +30,21 @@ class Mode(Enum):
     intro = 1
     main = 2
 
+
+class OpencvRect():
+    def __init__(self, x, y, w, h):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+
+
+class Relief():
+    def __init__(self): 
+        self.x = None
+        self.y = None
+        self.w = None
+        self.h = None
+
+        self.centerX = None
+        self.centerY = None

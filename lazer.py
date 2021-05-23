@@ -1,44 +1,28 @@
 import cv2 as cv
-import imutils
 import yaml
 import logging
 
 from gfxutils import *
 from model import *
+from detector import Detector
 
 logger = logging.getLogger(__name__)
 
 
 class Lazer(object):
-    """Detect and visualize hits in a frame with a mask every time nextFrame() is called"""
+    """Manages detection via Detector on VideoStream"""
 
     def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
         self.videoStream = videoStream
-        self.thresh = thresh
         self.saveFrames = saveFrames
         self.saveHits = saveHits
         self.mode = mode
-
-        self.frame = None  # from nextFrame(): the frame from the cam/video
-        self.mask = None  # from nextFrame(): mask generated based on frame
-        self.mask2 = None  # temp
-        self.previousMask = None  # mask of previous iteration of the nextFrame() loop
+        self.detector = Detector(thresh=thresh)
         self.debug = True
 
-        # decoding options
-        self.minRadius = 1.0
-        self.doDenoise = True
-        self.doSharpen = True
-
-        # data for target
-        self.targetCenterX = None
-        self.targetCenterY = None
-        self.targetHitRadius = None
-        self.targetThresh = 60  # hopyfully sane initial value, going up
-
-        # detection options
-        self.graceTime = 10  # How many frames between detections
-        self.lastFoundHitFrameNr = 0  # Track when last hit was found
+        # static hit options
+        self.hitGraceTime = 30  # How many frames between detections (1s)
+        self.hitMinRadius = 1.0  # found out by experimentation
 
         self.resetDynamic()
 
@@ -47,59 +31,54 @@ class Lazer(object):
         """resets dynamic parameter used to track temporary things (ui cleanup)"""
         self.glareMeter = 0
         self.glareMeterAvg = 0
+ 
         self.hits = []
-        self.lastFoundHitFrameNr = 0
+        self.hitLastFoundFrameNr = 0  # Track when last hit was found
+
+       # data for identified target
+        self.targetThresh = 60  # hopyfully sane initial value, going up
+        self.targetCenterX = None
+        self.targetCenterY = None
+        self.targetRadius = None
 
 
     def changeMode(self, mode):
         self.mode = mode
+        self.detector.mode = mode
         if self.mode == Mode.main:
             # take over target, if any
-            self.findTargets(save=True)
+            self.handleTarget(save=True)
 
 
     def getDistanceToCenter(self, x, y):
         return calculateDistance(self.targetCenterX, self.targetCenterY, x, y)
 
     
-    def setTargetCenter(self, x, y, targetHitRadius):
+    def setTargetCenter(self, x, y, targetRadius):
         """Sets and enabled the target"""
         logger.debug("Set target center: " + str(x) + " / " + str(y))
         self.targetCenterX = int(x)
         self.targetCenterY = int(y)
-        self.targetHitRadius = int(targetHitRadius)
+        self.targetRadius = int(targetRadius)
 
 
     def nextFrame(self):
         """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
-        self.previousMask = self.mask
-
         isTrue, self.frame = self.videoStream.getFrame()
         if not isTrue:  # end of file or stream
             return False
-
+        
         # reset stats if file rewinds
         if self.videoStream.frameNr == 0:
             self.resetDynamic()
 
-        # Mask: Make to grey
-        self.mask = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
-
-        # Mask: remove small artefacts (helpful for removing some glare, and improving detection)
-        if self.doSharpen:
-            self.mask = cv.medianBlur(self.mask,5)
-            # self.mask = cv.blur(self.mask,(5,5))
-            self.mask = cv.erode(self.mask, (7,7), iterations=3)
-
-        # save copy of mask for now
-        self.mask2 = self.mask.copy()
-        # Mask: threshold, throw away all bytes below thresh (bytes)
-        _, self.mask = cv.threshold(self.mask, 255-self.thresh, 255, cv.THRESH_BINARY)
-
-        # Mask: Check if there is glare and handle it (glaremeter, drawing rectangles)
+        self.detector.initFrame(frame=self.frame)
         if self.mode == Mode.intro:
-            self.checkGlare()
-            self.findTargets()
+            self.handleGlare()
+            self.handleTarget()
+        elif self.mode == Mode.main:
+            recordedHits = self.getHits()
+            self.drawHits(recordedHits)
 
         # if we wanna record everything
         if self.saveFrames:
@@ -108,68 +87,32 @@ class Lazer(object):
         return True
 
 
-    def detectAndDrawHits(self, staticImage=False):
-        """Use self.mask to detect hits in the picture and highlight them"""
-        if not staticImage:
-            # wait a bit between detections
-            if (self.videoStream.frameNr - self.lastFoundHitFrameNr) < self.graceTime:
-                return []
+    def handleTarget(self, save=False):
+        if self.targetThresh > 150:
+            # give up here
+            return
 
-            # check if there is any change at all
-            # if no change, do not attempt to find contours. 
-            # this can save processing power
-            if frameIdentical(self.mask, self.previousMask):
-                return []
+        contours, reliefs = self.detector.findTargets(self.targetThresh)
+        for relief in reliefs:
+            cv.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
+            for c in contours:
+                cv.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
 
-        recordedHits = findHits(self.mask, self.minRadius)
-        if len(recordedHits) > 0:
-            self.lastFoundHitFrameNr = self.videoStream.frameNr
-            logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
-        else:
-            return []
-
-        # augment frame with hit indicators
-        if staticImage or self.mode == Mode.main:
-            for recordedHit in recordedHits:
-                # draw
-                cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
-                cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
-
-                # check if we have a target (to measure distance to)
-                if self.targetHitRadius > 0:
-                    p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
-                    r = self.targetHitRadius
-                    d = int(p/r * 100)
-                    recordedHit.distance = d
-
-                self.hits.append(recordedHit)
-
-                if self.saveHits:
-                    self.saveCurrentFrame(recordedHit)
-
-        return recordedHits
+        if len(reliefs) == 0:
+            self.targetThresh += 1
+        elif save:
+            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
+            self.targetCenterX = reliefs[0].centerX
+            self.targetCenterY = reliefs[0].centerY
+            self.targetRadius = int(reliefs[0].w / 2)
 
 
-    def checkGlare(self):
-        """Check self.frame for glare, and highlight it"""
-        # threshold the difference image, followed by finding contours to
-        # obtain the regions of the two input images that differ
-        #thresh = cv.threshold(diff, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
-        #cnts = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    def handleGlare(self):
+        glare = self.detector.findGlare()
+        for rect in glare:
+            cv.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
 
-        cnts = cv.findContours(self.mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-
-        # loop over the contours
-        for c in cnts:
-            # compute the bounding box of the contour and then draw the
-            # bounding box on both input images to represent where the two
-            # images differ
-            (x, y, w, h) = cv.boundingRect(c)
-            cv.rectangle(self.frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            #cv.rectangle(imageB, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-        if len(cnts) > 0:
+        if len(glare) > 0:
             if self.glareMeter < 60:  # 30 is typical fps, so 1s
                 self.glareMeter += 4
         else:
@@ -178,34 +121,37 @@ class Lazer(object):
         self.glareMeterAvg = int(self.glareMeterAvg + self.glareMeter) >> 1
 
 
-    def findTargets(self, save=False):
-        if self.targetThresh > 150:
-            # give up here
-            return
+    def getHits(self, staticImage=False):
+        if not staticImage:
+            # wait a bit between detections
+            if (self.videoStream.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
+                return []
 
-        thresh = cv.threshold(self.mask2, self.targetThresh, 255, cv.THRESH_BINARY_INV)[1]
-        #cv.imshow('thresh1', thresh)
+        recordedHits = self.detector.findHits(self.hitMinRadius)
+        if len(recordedHits) > 0:
+            self.hitLastFoundFrameNr = self.videoStream.frameNr
+            logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
 
-        cnts = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)  # use RETR_TREE here to get all
-        cnts = imutils.grab_contours(cnts)
-        reliefs = []
-        for c in cnts:
-            #relief = findTriangles(c)
-            relief = findCircles(c)
-            if relief == None:
-                continue
-            cv.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
-            #cv.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
-            reliefs.append(relief)
+        return recordedHits
 
-        if len(reliefs) == 0:
-            self.targetThresh += 1
 
-        if save:
-            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
-            self.targetCenterX = reliefs[0].centerX
-            self.targetCenterY = reliefs[0].centerY
-            self.targetHitRadius = int(reliefs[0].w / 2)
+    def drawHits(self, recordedHits):
+        for recordedHit in recordedHits:
+            # draw
+            cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
+            cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
+
+            # check if we have a target (to measure distance to)
+            if self.targetRadius > 0:
+                p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
+                r = self.targetRadius
+                d = int(p/r * 100)
+                recordedHit.distance = d
+
+            self.hits.append(recordedHit)
+
+            if self.saveHits:
+                self.saveCurrentFrame(recordedHit)
 
 
     def displayFrame(self):
@@ -213,7 +159,7 @@ class Lazer(object):
         o = 300
 
         color = (255, 255, 255)
-        s= "Tresh: " + str(self.thresh)
+        s= "Tresh: " + str(self.detector.thresh)
         cv.putText(self.frame, s, (o*0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.glareMeterAvg > 0:
@@ -228,9 +174,9 @@ class Lazer(object):
         if self.debug:
             s = 'Frame: '+ str(self.videoStream.frameNr)
             cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            s = "Denoise: " + str(self.doDenoise)
+            s = "Denoise: " + str(self.detector.doDenoise)
             cv.putText(self.frame, s, ((o*0),60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            s= "Sharpen: " + str(self.doSharpen)
+            s= "Sharpen: " + str(self.detector.doSharpen)
             cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         for idx, hit in enumerate(self.hits): 
@@ -260,11 +206,11 @@ class Lazer(object):
             cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         if self.targetCenterX != None:
-            cv.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetHitRadius, (0,200,0), 2)
+            cv.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
 
         cv.imshow('Video', self.frame)
         if self.debug:
-            cv.imshow('Mask', self.mask)
+            cv.imshow('Mask', self.detector.mask)
 
 
     def saveCurrentFrame(self, recordedHit=None):
@@ -292,134 +238,3 @@ class Lazer(object):
     def release(self):
         self.videoStream.release()
 
-
-# from ball_tracking.py
-def findHits(mask, minRadius):
-    res = []
-
-    # find contours in the mask and initialize the current
-    # (x, y) center of the ball
-    cnts = cv.findContours(mask.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
-    center = None
-
-    # only proceed if at least one contour was found
-    if len(cnts) > 0:
-        # find the largest contour in the mask, then use
-        # it to compute the minimum enclosing circle and
-        # centroid
-        c = max(cnts, key=cv.contourArea)
-        ((x, y), radius) = cv.minEnclosingCircle(c)
-        M = cv.moments(c)
-        if M["m00"] == 0:
-            ##print("DIVISION BY ZERO")
-            return res
-        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-
-        # only proceed if the radius meets a minimum size
-        if radius > minRadius:  # orig: 10, for most: 5
-            radius = int(radius)
-            x = int(x)
-            y = int(y)
-            logger.info("Found dot with radius " + str(radius) + " at  X:" + str(x) + "  Y:" + str(y))
-
-            recordedHit = RecordedHit()
-            recordedHit.x = x
-            recordedHit.y = y
-            recordedHit.center = center
-            recordedHit.radius = radius
-            res.append(recordedHit)
-        else:
-            logger.info("Too small: " + str(radius))
-            pass
-
-    return res
-
-
-class Relief():
-    def __init__(self): 
-        self.x = None
-        self.y = None
-        self.w = None
-        self.h = None
-
-        self.centerX = None
-        self.centerY = None
-
-
-def findTriangles(c):
-    peri = cv.arcLength(c, True)
-    approx = cv.approxPolyDP(c, 0.04 * peri, True)
-
-    # if the shape is a triangle, it will have 3 vertices
-    if len(approx) != 3:
-        return None
-
-    # compute the bounding box of the contour and use the
-    # bounding box to compute the aspect ratio
-    (x, y, w, h) = cv.boundingRect(approx)
-
-    # probably too small
-    if w < 100 or h < 100:
-        return None
-
-    # not similar height/width
-    ar = w / float(h)
-    if ar < 0.9 or ar > 1.3:
-        return None
-
-    relief = Relief()
-    relief.x = x
-    relief.y = y
-    relief.w = w
-    relief.h = h
-
-    # compute the center of the contour, then detect the name of the
-    # shape using only the contour
-    M = cv.moments(c)
-    if M["m00"] != 0:
-        cX = int((M["m10"] / M["m00"]))
-        cY = int((M["m01"] / M["m00"]))
-        relief.centerX = cX
-        relief.centerY = cY
-    else:
-        print("Division by zero")
-
-    return relief
-
-
-def findCircles(c):
-    # initialize the shape name and approximate the contour
-    peri = cv.arcLength(c, True)
-    approx = cv.approxPolyDP(c, 0.04 * peri, True)
-
-    # lots of vertices pls
-    if len(approx) < 7:
-        return None
-
-    # compute the bounding box of the contour and use the
-    # bounding box to compute the aspect ratio
-    (x, y, w, h) = cv.boundingRect(approx)
-
-    # probably too small
-    if w < 100 or h < 100:
-        #print("Too small: {}/{}".format(w, h))
-        return None
-
-    relief = Relief()
-    relief.x = x
-    relief.y = y
-    relief.w = w
-    relief.h = h
-
-    # compute the center of the contour
-    M = cv.moments(c)
-    if M["m00"] != 0:
-        cX = int((M["m10"] / M["m00"]))
-        cY = int((M["m01"] / M["m00"]))
-        relief.centerX = cX
-        relief.centerY = cY
-    else:
-        print("Division by zero")
-
-    return relief
