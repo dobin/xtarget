@@ -1,4 +1,4 @@
-import cv2 as cv
+import cv2
 from collections import deque
 import argparse
 
@@ -31,7 +31,7 @@ def showFrame(filename, frameNr):
     lazer.nextFrame()
     lazer.displayFrame()
 
-    key = cv.waitKey(0)  # any key quits
+    key = cv2.waitKey(0)  # any key quits
     lazer.release()
 
 

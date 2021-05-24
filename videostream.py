@@ -1,5 +1,5 @@
 from math import e
-import cv2 as cv
+import cv2
 import os
 import logging
 
@@ -87,8 +87,8 @@ class FileVideoStream(VideoStream):
             self.inputStream = SimpleInputStream(filename)
             self.inputStream.initStream()
 
-        self.width = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
-        self.height = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
+        self.width = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_WIDTH ))
+        self.height = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_HEIGHT ))
 
         return True
 
@@ -106,7 +106,7 @@ class FileVideoStream(VideoStream):
         if self.threaded:  # not implemented for now
             return
 
-        self.inputStream.capture.set(cv.CAP_PROP_POS_FRAMES, frameNr)
+        self.inputStream.capture.set(cv2.CAP_PROP_POS_FRAMES, frameNr)
         self.frameNr = frameNr-1
 
 
@@ -135,15 +135,15 @@ class CamVideoStream(VideoStream):
             self.inputStream.capture.set(3,resolution['width'])
             self.inputStream.capture.set(4,resolution['height'])
 
-        #self.width = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_WIDTH ))
-        #self.height = int(self.inputStream.capture.get(cv.CAP_PROP_FRAME_HEIGHT ))
+        #self.width = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_WIDTH ))
+        #self.height = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_HEIGHT ))
         self.width = resolution['width']
         self.height = resolution['height']
 
         logger.debug("Camera settings (most likely wrong): ")
-        logger.debug("  Exposure: " + str(self.inputStream.capture.get(cv.CAP_PROP_EXPOSURE)))
-        logger.debug("  Gain    : " + str(self.inputStream.capture.get(cv.CAP_PROP_GAIN)))
-        logger.debug("  AutoExpo: " + str(self.inputStream.capture.get(cv.CAP_PROP_AUTO_EXPOSURE)))
+        logger.debug("  Exposure: " + str(self.inputStream.capture.get(cv2.CAP_PROP_EXPOSURE)))
+        logger.debug("  Gain    : " + str(self.inputStream.capture.get(cv2.CAP_PROP_GAIN)))
+        logger.debug("  AutoExpo: " + str(self.inputStream.capture.get(cv2.CAP_PROP_AUTO_EXPOSURE)))
 
 
     def updateCamSettings(self, camConfig):
@@ -154,13 +154,13 @@ class CamVideoStream(VideoStream):
         if camConfig.exposure != self.exposure:
             logger.info("Update exposure: " + str(camConfig.exposure))
             self.exposure = camConfig.exposure
-            self.capture.set(cv.CAP_PROP_EXPOSURE, self.exposure)
+            self.capture.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
 
         if camConfig.gain != self.gain:
             logger.info("Update gain: " + str(camConfig.gain))
             self.gain = camConfig.gain
-            self.capture.set(cv.CAP_PROP_GAIN, self.gain)
+            self.capture.set(cv2.CAP_PROP_GAIN, self.gain)
 
         if camConfig.autoExposure != self.autoExposure:
             self.autoExposure = self.autoExposure
-            self.capture.set(cv.CAP_PROP_AUTO_EXPOSURE, self.autoExposure)
+            self.capture.set(cv2.CAP_PROP_AUTO_EXPOSURE, self.autoExposure)

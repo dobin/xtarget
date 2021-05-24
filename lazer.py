@@ -1,4 +1,4 @@
-import cv2 as cv
+import cv2
 import yaml
 import logging
 
@@ -94,9 +94,9 @@ class Lazer(object):
 
         contours, reliefs = self.detector.findTargets(self.targetThresh)
         for relief in reliefs:
-            cv.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
+            cv2.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
             for c in contours:
-                cv.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
+                cv2.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
 
         if len(reliefs) == 0:
             self.targetThresh += 1
@@ -110,7 +110,7 @@ class Lazer(object):
     def handleGlare(self):
         glare = self.detector.findGlare()
         for rect in glare:
-            cv.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
+            cv2.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
 
         if len(glare) > 0:
             if self.glareMeter < 60:  # 30 is typical fps, so 1s
@@ -138,8 +138,8 @@ class Lazer(object):
     def drawHits(self, recordedHits):
         for recordedHit in recordedHits:
             # draw
-            cv.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
-            cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
+            cv2.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
+            cv2.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
             # check if we have a target (to measure distance to)
             if self.targetRadius != None:
@@ -160,24 +160,24 @@ class Lazer(object):
 
         color = (255, 255, 255)
         s= "Tresh: " + str(self.detector.thresh)
-        cv.putText(self.frame, s, (o*0,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        cv2.putText(self.frame, s, (o*0,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.glareMeterAvg > 0:
-            cv.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
+            cv2.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv2.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
 
         s = "Mode: " + str(self.mode.name)
-        cv.putText(self.frame, s, (o*0,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+        cv2.putText(self.frame, s, (o*0,90), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
         if self.videoStream.fps.get() < 28:
             s = "FPS: " + str(self.videoStream.fps.get())
-            cv.putText(self.frame, s, (o*1,90), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv2.putText(self.frame, s, (o*1,90), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.debug:
             s = 'Frame: '+ str(self.videoStream.frameNr)
-            cv.putText(self.frame, s, (o*1,30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv2.putText(self.frame, s, (o*1,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
             s = "Denoise: " + str(self.detector.doDenoise)
-            cv.putText(self.frame, s, ((o*0),60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv2.putText(self.frame, s, ((o*0),60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
             s= "Sharpen: " + str(self.detector.doSharpen)
-            cv.putText(self.frame, s, (o*1,60), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv2.putText(self.frame, s, (o*1,60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         for idx, hit in enumerate(self.hits): 
             if hit.distance > 0:
@@ -193,24 +193,24 @@ class Lazer(object):
             else:
                 color = (0, 170, 200)
 
-            cv.putText(self.frame, s, (0,0+140+(30*idx)), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            cv.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
-            cv.circle(self.frame, (hit.x, hit.y), 10, color, -1)
+            cv2.putText(self.frame, s, (0,0+140+(30*idx)), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            cv2.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
+            cv2.circle(self.frame, (hit.x, hit.y), 10, color, -1)
 
         color = (0, 0, 255)
         if self.mode == Mode.intro:
             s = "Press SPACE to start"
-            cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+            cv2.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
         elif self.mode == Mode.main:
             s = "Press SPACE to stop"
-            cv.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+            cv2.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         if self.targetCenterX != None:
-            cv.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
+            cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
 
-        cv.imshow('Video', self.frame)
+        cv2.imshow('Video', self.frame)
         if self.debug:
-            cv.imshow('Mask', self.detector.mask)
+            cv2.imshow('Mask', self.detector.mask)
 
 
     def saveCurrentFrame(self, recordedHit=None):
@@ -228,11 +228,11 @@ class Lazer(object):
 
         fname = filenameBase + 'frame.jpg'
         logger.info("  Save Frame to: " + fname)
-        cv.imwrite(fname, self.frame)
+        cv2.imwrite(fname, self.frame)
 
         fname = filenameBase + 'mask.jpg' 
         logger.info("  Save Mask to : " + fname)
-        cv.imwrite(fname, self.mask)
+        cv2.imwrite(fname, self.mask)
 
 
     def release(self):

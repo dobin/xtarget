@@ -1,4 +1,4 @@
-import cv2 as cv
+import cv2
 import imutils
 
 from gfxutils import *
@@ -25,18 +25,18 @@ class Detector():
         self.previousMask = self.mask
 
         # Mask: Make to grey
-        self.mask = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        self.mask = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Mask: remove small artefacts (helpful for removing some glare, and improving detection)
         if self.doSharpen:
-            self.mask = cv.medianBlur(self.mask,5)
-            # self.mask = cv.blur(self.mask,(5,5))
-            self.mask = cv.erode(self.mask, (7,7), iterations=3)
+            self.mask = cv2.medianBlur(self.mask,5)
+            # self.mask = cv2.blur(self.mask,(5,5))
+            self.mask = cv2.erode(self.mask, (7,7), iterations=3)
 
         # save copy of mask for now
         self.mask2 = self.mask.copy()
         # Mask: threshold, throw away all bytes below thresh (bytes)
-        _, self.mask = cv.threshold(self.mask, 255-self.thresh, 255, cv.THRESH_BINARY)
+        _, self.mask = cv2.threshold(self.mask, 255-self.thresh, 255, cv2.THRESH_BINARY)
 
         # check if there is any change at all
         # if no change, do not attempt to find contours. 
@@ -49,7 +49,7 @@ class Detector():
         """Check self.frame for glare, and highlight it"""
 
         # glare should be detected on mask - it needs to be clean
-        cnts = cv.findContours(self.mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(self.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
 
         # loop over the contours
@@ -58,7 +58,7 @@ class Detector():
             # compute the bounding box of the contour and then draw the
             # bounding box on both input images to represent where the two
             # images differ
-            (x, y, w, h) = cv.boundingRect(c)
+            (x, y, w, h) = cv2.boundingRect(c)
             opencvRect = OpencvRect(x, y, w, h)
             glare.append(opencvRect)
             
@@ -66,8 +66,8 @@ class Detector():
 
 
     def findTargets(self, targetThresh):
-        thresh = cv.threshold(self.mask2, targetThresh, 255, cv.THRESH_BINARY_INV)[1]
-        cnts = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)  # use RETR_TREE here to get all
+        thresh = cv2.threshold(self.mask2, targetThresh, 255, cv2.THRESH_BINARY_INV)[1]
+        cnts = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)  # use RETR_TREE here to get all
         cnts = imutils.grab_contours(cnts)
         reliefs = []
         contours = []
@@ -86,7 +86,7 @@ class Detector():
 
         # find contours in the mask and initialize the current
         # (x, y) center of the ball
-        cnts = cv.findContours(self.mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(self.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
         center = None
 
@@ -95,9 +95,9 @@ class Detector():
             # find the largest contour in the mask, then use
             # it to compute the minimum enclosing circle and
             # centroid
-            c = max(cnts, key=cv.contourArea)
-            ((x, y), radius) = cv.minEnclosingCircle(c)
-            M = cv.moments(c)
+            c = max(cnts, key=cv2.contourArea)
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            M = cv2.moments(c)
             if M["m00"] == 0:
                 ##print("DIVISION BY ZERO")
                 return res
@@ -124,8 +124,8 @@ class Detector():
 
 
 def findTriangles(c):
-    peri = cv.arcLength(c, True)
-    approx = cv.approxPolyDP(c, 0.04 * peri, True)
+    peri = cv2.arcLength(c, True)
+    approx = cv2.approxPolyDP(c, 0.04 * peri, True)
 
     # if the shape is a triangle, it will have 3 vertices
     if len(approx) != 3:
@@ -133,7 +133,7 @@ def findTriangles(c):
 
     # compute the bounding box of the contour and use the
     # bounding box to compute the aspect ratio
-    (x, y, w, h) = cv.boundingRect(approx)
+    (x, y, w, h) = cv2.boundingRect(approx)
 
     # probably too small
     if w < 100 or h < 100:
@@ -152,7 +152,7 @@ def findTriangles(c):
 
     # compute the center of the contour, then detect the name of the
     # shape using only the contour
-    M = cv.moments(c)
+    M = cv2.moments(c)
     if M["m00"] != 0:
         cX = int((M["m10"] / M["m00"]))
         cY = int((M["m01"] / M["m00"]))
@@ -166,8 +166,8 @@ def findTriangles(c):
 
 def findCircles(c):
     # initialize the shape name and approximate the contour
-    peri = cv.arcLength(c, True)
-    approx = cv.approxPolyDP(c, 0.04 * peri, True)
+    peri = cv2.arcLength(c, True)
+    approx = cv2.approxPolyDP(c, 0.04 * peri, True)
 
     # lots of vertices pls
     if len(approx) < 7:
@@ -175,7 +175,7 @@ def findCircles(c):
 
     # compute the bounding box of the contour and use the
     # bounding box to compute the aspect ratio
-    (x, y, w, h) = cv.boundingRect(approx)
+    (x, y, w, h) = cv2.boundingRect(approx)
 
     # probably too small
     if w < 100 or h < 100:
@@ -189,7 +189,7 @@ def findCircles(c):
     relief.h = h
 
     # compute the center of the contour
-    M = cv.moments(c)
+    M = cv2.moments(c)
     if M["m00"] != 0:
         cX = int((M["m10"] / M["m00"]))
         cY = int((M["m01"] / M["m00"]))

@@ -3,7 +3,6 @@ import glob
 import time
 import yaml
 import os.path
-import cv2 as cv
 
 from gfxutils import getTime, readVideoFileConfig
 from lazer import Lazer
@@ -182,28 +181,6 @@ def writeVideoInfo(filename):
         if not isTrue:
             break
         lazer.detectAndDrawHits()  # all in one for now
-
-    lazer.release()
-
-
-def old(filename):
-    print("Analyzing file: " + filename)
-    lazer = Lazer(showVid=False)
-    lazer.initFile(filename)
-
-    while True:
-        hasFrame = lazer.nextFrame()
-        if not hasFrame:
-            break
-
-        # find contours and visualize it in the main frame
-        recordedHits = lazer.detectAndDrawHits()
-        for recordedHit in recordedHits:
-            filenameBase = os.path.splitext(filename)[0]
-            # write all the pics
-            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_mask.jpg", lazer.mask)
-            cv.imwrite(filenameBase + "_" + str(lazer.frameNr) + "_frame.jpg", lazer.frame)
-
 
     lazer.release()
 

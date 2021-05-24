@@ -1,4 +1,4 @@
-import cv2 as cv
+import cv2
 import numpy as np
 
 from lazer import Lazer
@@ -39,8 +39,8 @@ class Playback(object):
             self.cursesUi = CursesUi()
             self.cursesUi.initCurses()
             
-        cv.namedWindow('Video')
-        cv.setMouseCallback("Video", self.clickTrack)
+        cv2.namedWindow('Video')
+        cv2.setMouseCallback("Video", self.clickTrack)
 
 
     def play(self):
@@ -53,9 +53,9 @@ class Playback(object):
             # input
             self.handleCurses()  # curses is optional
             if self.isPaused:
-                key = cv.waitKey(0)  # wait forever as pause
+                key = cv2.waitKey(0)  # wait forever as pause
             else:
-                key = cv.waitKey(2)
+                key = cv2.waitKey(2)
             self.handleKey(key)
             if key == ord('q'):  # quit
                 break
@@ -64,7 +64,7 @@ class Playback(object):
         if self.cursesEnabled:
             self.cursesUi.endCurses()
         self.lazer.release()
-        cv.destroyAllWindows()
+        cv2.destroyAllWindows()
         print("Quitting nicely...")
 
 
@@ -135,17 +135,17 @@ class Playback(object):
     def clickTrack(self, event, x, y, flags, param):
         """Mouse callback used to handle mouse events based on mode"""
         if self.cropModeEnabled or self.targetModeEnabled:
-            if event == cv.EVENT_LBUTTONUP:
+            if event == cv2.EVENT_LBUTTONUP:
                 self.trackerLocB = (x,y)
                 self.hitRadius = calculateDistance(self.trackerLocA[0], self.trackerLocA[1], x, y)
                 logger.info("Click Up  : " + str(self.trackerLocB) + " Radius: " + str(self.hitRadius))
-            if event == cv.EVENT_LBUTTONDOWN:
+            if event == cv2.EVENT_LBUTTONDOWN:
                 self.initClick()
                 self.trackerLocA = (x,y)
                 self.trackX = x
                 self.trackY = y
                 logger.info("Click Down: " + str(self.trackerLocA))
-            elif event == cv.EVENT_MOUSEMOVE:
+            elif event == cv2.EVENT_MOUSEMOVE:
                 self.trackX = x
                 self.trackY = y
 
@@ -153,12 +153,12 @@ class Playback(object):
         """Draw temporary UI selection onto the frame for clickTrack"""
         if self.cropModeEnabled and self.trackerLocA != None:
             if self.trackerLocB == None:
-                cv.rectangle(self.lazer.frame, 
+                cv2.rectangle(self.lazer.frame, 
                     self.trackerLocA, 
                     (self.trackX, self.trackY), 
                     (0,255,0), 2)
             else:
-                cv.rectangle(self.lazer.frame, 
+                cv2.rectangle(self.lazer.frame, 
                     self.trackerLocA, 
                     self.trackerLocB, 
                     (0,255,0), 2)
@@ -168,9 +168,9 @@ class Playback(object):
                 center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
                 pt_on_circle = np.array([self.trackX, self.trackY], dtype=np.int64)
                 radius = int(np.linalg.norm(pt_on_circle-center))
-                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
+                cv2.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
             else:
                 center = np.array([self.trackerLocA[0], self.trackerLocA[1]], dtype=np.int64)
                 pt_on_circle = np.array([self.trackerLocB[0], self.trackerLocB[1]], dtype=np.int64)
                 radius = int(np.linalg.norm(pt_on_circle-center))
-                cv.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
+                cv2.circle(self.lazer.frame, (center[0], center[1]), radius, (0,255,0), 2)
