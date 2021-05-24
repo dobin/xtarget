@@ -142,7 +142,7 @@ class Lazer(object):
             cv.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
             # check if we have a target (to measure distance to)
-            if self.targetRadius > 0:
+            if self.targetRadius != None:
                 p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
                 r = self.targetRadius
                 d = int(p/r * 100)
