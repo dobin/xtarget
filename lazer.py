@@ -5,6 +5,7 @@ import logging
 from gfxutils import *
 from model import *
 from detector import Detector
+from projector import Projector
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class Lazer(object):
         self.saveHits = saveHits
         self.mode = mode
         self.detector = Detector(thresh=thresh)
+        self.projector = Projector()
         self.debug = True
 
         # static hit options
@@ -105,6 +107,7 @@ class Lazer(object):
             self.targetCenterX = reliefs[0].centerX
             self.targetCenterY = reliefs[0].centerY
             self.targetRadius = int(reliefs[0].w / 2)
+            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
 
 
     def handleGlare(self):
@@ -131,6 +134,7 @@ class Lazer(object):
         if len(recordedHits) > 0:
             self.hitLastFoundFrameNr = self.videoStream.frameNr
             logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
+            self.projector.handleShot(recordedHits[0])
 
         return recordedHits
 
@@ -211,6 +215,7 @@ class Lazer(object):
         cv2.imshow('Video', self.frame)
         if self.debug:
             cv2.imshow('Mask', self.detector.mask)
+        self.projector.draw()
 
 
     def saveCurrentFrame(self, recordedHit=None):
