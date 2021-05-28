@@ -48,7 +48,7 @@ class DetectorTest(unittest.TestCase):
         contours, reliefs = detector.findTargets(targetThresh=60)
 
         # its actually like 5
-        self.assertTrue(len(reliefs) > 0)
+        self.assertGreater(len(reliefs), 0)
 
         # more precise
         self.assertEqual(reliefs[0].centerX, 558)

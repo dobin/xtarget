@@ -25,16 +25,24 @@ class Projector():
         self.offsetX = None
         self.offsetY = None
 
+        self.colorTarget = (200, 0, 0)
+        self.colorHit = (0, 200, 0)
+
 
     def draw(self):
         frame = self.frame.copy()
 
-        cv2.circle(self.frame, (self.projectorTargetCenterX, self.projectorTargetCenterY), self.projectorTargetRadius, (255,255,255), 20)
+        cv2.circle(self.frame, 
+            (self.projectorTargetCenterX, self.projectorTargetCenterY), 
+            self.projectorTargetRadius, 
+            self.colorTarget, 10)
+
         if self.recordedHit != None:
             cv2.circle(self.frame, 
                 (int(self.recordedHit.x * self.offsetX), int(self.recordedHit.y * self.offsetY)), 
                 int(self.recordedHit.radius * self.offsetRadius), 
-                (255,255,255), 4)
+                self.colorHit, 4)
+
         cv2.imshow('Projector', frame)
 
 
