@@ -178,8 +178,7 @@ def findCircles(c):
     (x, y, w, h) = cv2.boundingRect(approx)
 
     # probably too small
-    if w < 100 or h < 100:
-        #print("Too small: {}/{}".format(w, h))
+    if w < 50 or h < 50:
         return None
 
     relief = Relief()

@@ -89,6 +89,7 @@ class Playback(object):
             self.lazer.resetDynamic()
             if self.lazer.mode == Mode.intro:
                 self.lazer.changeMode(Mode.main)
+                #self.lazer.setTargetCenter(self.trackX, self.trackY, self.hitRadius)
             elif self.lazer.mode == Mode.main:
                 self.lazer.changeMode(Mode.intro)
 
@@ -115,11 +116,11 @@ class Playback(object):
         if key == ord('j'):  # decrease threshhold
             if self.isPaused:
                 self.lazer.setFrame(self.lazer.videoStream.frameNr)
-            self.lazer.thresh -= 1
+            self.lazer.detector.thresh -= 1
         if key == ord('k'):  # increase threshhold
             if self.isPaused:
                 self.lazer.setFrame(self.lazer.videoStream.frameNr)
-            self.lazer.thresh += 1
+            self.lazer.detector.thresh += 1
 
 
     def handleCurses(self):

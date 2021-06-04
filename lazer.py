@@ -43,13 +43,20 @@ class Lazer(object):
         self.targetCenterY = None
         self.targetRadius = None
 
+        self.tmpTargetCenterX = None
+        self.tmpTargetCenterY = None
+        self.tmpTargetRadius = None
+
 
     def changeMode(self, mode):
         self.mode = mode
         self.detector.mode = mode
         if self.mode == Mode.main:
+            logger.info("Change mode: Going to main")
             # take over target, if any
-            self.handleTarget(save=True)
+            if self.tmpTargetCenterX != None:
+                self.projector.setTargetCenter(self.tmpTargetCenterX, self.tmpTargetCenterY, self.tmpTargetRadius)
+        #    self.handleTarget(save=True)
 
 
     def getDistanceToCenter(self, x, y):
@@ -62,6 +69,7 @@ class Lazer(object):
         self.targetCenterX = int(x)
         self.targetCenterY = int(y)
         self.targetRadius = int(targetRadius)
+        self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
 
 
     def nextFrame(self):
@@ -97,17 +105,24 @@ class Lazer(object):
         contours, reliefs = self.detector.findTargets(self.targetThresh)
         for relief in reliefs:
             cv2.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
+
+            # temporarily store it
+            self.tmpTargetCenterX = relief.centerX
+            self.tmpTargetCenterY = relief.centerY
+            self.tmpTargetRadius = int(relief.w / 2)
+
             for c in contours:
-                cv2.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
+                cv2.drawContours(self.frame, [c], -1, (50, 50, 50), 2)
+
 
         if len(reliefs) == 0:
             self.targetThresh += 1
-        elif save:
-            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
-            self.targetCenterX = reliefs[0].centerX
-            self.targetCenterY = reliefs[0].centerY
-            self.targetRadius = int(reliefs[0].w / 2)
-            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
+#        elif save:
+#            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
+#            self.targetCenterX = reliefs[0].centerX
+#            self.targetCenterY = reliefs[0].centerY
+#            self.targetRadius = int(reliefs[0].w / 2)
+#            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
 
 
     def handleGlare(self):
@@ -213,8 +228,8 @@ class Lazer(object):
             cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
 
         cv2.imshow('Video', self.frame)
-        if self.debug:
-            cv2.imshow('Mask', self.detector.mask)
+        #if self.debug:
+        #    cv2.imshow('Mask', self.detector.mask)
         self.projector.draw()
 
 
