@@ -86,21 +86,28 @@ def main():
     source = cv2.imread(args["source"])
 
     H, srcMat, dstMat = getWarp(image, source)
+    H_inv = np.linalg.inv(H)
     warped = cv2.warpPerspective(source, H, (imgW, imgH))
     output, outputMask = blend(warped, image, dstMat)
+
+    #cv2.drawContours(output, [dstMat], -1, (0, 255, 0), 2)
 
     # 90 / 113
     # 250 / 317
 
     #dst = toworld(90, 113, H)    # gives 290/358, not quiete correct
-    x = 120
-    y = 36
-    px, py = translate(x, y, H)  # gives 290/358
-    cv2.circle(output, (px, py), 7, (255, 0, 0), 3)
+    #x = 120
+    #y = 36
+    x = 290
+    y = 358
+    px, py = translate(x, y, H_inv)  # gives 290/358
+    cv2.circle(source, (px, py), 7, (255, 0, 0), 3)
 
-    cv2.circle(source, (x, y), 7, (255, 0, 0), 3)
+    cv2.circle(output, (x, y), 7, (255, 0, 0), 3)
     cv2.imshow("x", source)
     #print("DST: " + str(dst))
+    print("X:  {}   Y: {}".format(x, y))
+    print("PX: {}  PY: {}".format(px, py))
     
     print("H: " + str(H))
     print("srcMat: " + str(srcMat))

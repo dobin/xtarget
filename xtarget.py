@@ -38,6 +38,7 @@ def showFrame(filename, frameNr):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--video", help="Play a video file")
+    ap.add_argument("--image", help="Play a image")
     ap.add_argument("--cam", help="Capture from webcam id (starting at 0)")
     ap.add_argument("--test", help="Perform analysis of test-videos and validate (slow)", action='store_true')
     ap.add_argument("--testQuick", help="Perform analysis of test-pics and validate (fast)", action='store_true')
@@ -82,6 +83,20 @@ def main():
         playback = Playback(videoStream, saveFrames=args.saveFrames, saveHits=args.saveHits)
         playback.init()
         playback.play()
+
+    elif args.image is not None:
+        filename = args.image
+        videoFileConfig = readVideoFileConfig(filename)
+
+        videoStream = FileVideoStream(threaded=False, endless=True)
+        if not videoStream.initFile(filename):
+            return
+        videoStream.setCrop(videoFileConfig['crop'])
+
+        lazer = Lazer(videoStream, mode=Mode.intro)
+        lazer.nextFrame()  # gets next frame, and creates mask
+        lazer.displayFrame()  # draw ui n stuff
+        key = cv2.waitKey(0) 
 
     elif args.test:
         doTests()

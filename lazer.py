@@ -21,6 +21,7 @@ class Lazer(object):
         self.detector = Detector(thresh=thresh)
         self.projector = Projector()
         self.debug = True
+        self.glareEnabled = False
 
         # static hit options
         self.hitGraceTime = 30  # How many frames between detections (1s)
@@ -44,12 +45,17 @@ class Lazer(object):
         self.targetRadius = None
         self.noAutoTarget = False
 
+        # data for panton
+        self.pantonCorners = None
+        self.pantonIds = None
+
 
     def changeMode(self, mode):
         self.mode = mode
         self.detector.mode = mode
         if self.mode == Mode.main:
             self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
+            self.projector.setPanton(self.pantonCorners, self.pantonIds)
         elif self.mode == Mode.intro:
             self.resetDynamic()
 
@@ -94,9 +100,26 @@ class Lazer(object):
 
 
     def handlePentone(self):
+        if self.pantonCorners != None:
+            return
+
         (corners, ids, rejected) = self.detector.findPentone()
         if len(corners) != 4:
             return
+
+        self.pantonCorners = corners
+        self.pantonIds = ids
+        logger.info("Found pentone {} {}".format(len(corners), len(ids)))
+
+        self.projector.setPanton(self.pantonCorners, self.pantonIds)
+        recordedHit = RecordedHit()
+        recordedHit.x = 290
+        recordedHit.y = 358
+        recordedHit.radius = 3
+        cv2.circle(self.frame, 
+            (recordedHit.x, recordedHit.y), recordedHit.radius, 
+            (0, 255, 0), 4)
+        self.projector.handleShot(recordedHit)
 
 
     def handleTarget(self, save=False):
@@ -124,6 +147,8 @@ class Lazer(object):
 
 
     def handleGlare(self):
+        if not self.glareEnabled:
+            return
         glare = self.detector.findGlare()
         for rect in glare:
             cv2.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
