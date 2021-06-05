@@ -19,7 +19,6 @@ def getWarp(image, source):
         print("[INFO] could not find 4 corners...exiting")
         sys.exit(0)
 
-
     # otherwise, we've found the four ArUco markers, so we can continue
     # by flattening the ArUco IDs list and initializing our list of
     # reference points
@@ -34,7 +33,6 @@ def getWarp(image, source):
         j = np.squeeze(np.where(ids == i))
         corner = np.squeeze(corners[j])
         refPts.append(corner)
-
 
     # unpack our ArUco reference points and use the reference points to
     # define the *destination* transform matrix, making sure the points
@@ -54,6 +52,24 @@ def getWarp(image, source):
     return H, srcMat, dstMat
     
 
+def translate(x, y, M):
+    p = np.array((x,y,1)).reshape((3,1))
+    temp_p = M.dot(p)
+    sum = np.sum(temp_p ,1)
+    px = int(round(sum[0]/sum[2]))
+    py = int(round(sum[1]/sum[2]))
+
+    return px, py
+
+def toworld(x,y, inversehomographymatrix):
+    imagepoint = [x, y, 1]
+    worldpoint = np.array(np.dot(inversehomographymatrix,imagepoint))
+    scalar = worldpoint[2]
+    xworld = worldpoint[0]/scalar
+    yworld = worldpoint[1]/scalar
+    return xworld, yworld
+
+
 def main():
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
@@ -72,7 +88,24 @@ def main():
     H, srcMat, dstMat = getWarp(image, source)
     warped = cv2.warpPerspective(source, H, (imgW, imgH))
     output, outputMask = blend(warped, image, dstMat)
+
+    # 90 / 113
+    # 250 / 317
+
+    #dst = toworld(90, 113, H)    # gives 290/358, not quiete correct
+    x = 120
+    y = 36
+    px, py = translate(x, y, H)  # gives 290/358
+    cv2.circle(output, (px, py), 7, (255, 0, 0), 3)
+
+    cv2.circle(source, (x, y), 7, (255, 0, 0), 3)
+    cv2.imshow("x", source)
+    #print("DST: " + str(dst))
     
+    print("H: " + str(H))
+    print("srcMat: " + str(srcMat))
+    print("dstMat: " + str(dstMat))
+
     #cv2.imshow("Input", image)
     #cv2.imshow("Source", source)
     cv2.imshow("dstMat", outputMask)
