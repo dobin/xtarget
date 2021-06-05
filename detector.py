@@ -12,16 +12,20 @@ class Detector():
         self.doDenoise = True
         self.doSharpen = True
 
+        self.arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
+        self.arucoParams = cv2.aruco.DetectorParameters_create()
         self.init()
 
 
     def init(self):
+        self.frame = None
         self.mask = None
         self.previousMask = None
         self.mask2 = None
         
 
     def initFrame(self, frame):
+        self.frame = frame
         self.previousMask = self.mask
 
         # Mask: Make to grey
@@ -43,6 +47,11 @@ class Detector():
         # this can save processing power
         #if frameIdentical(self.mask, self.previousMask):
         #    return []
+
+
+    def findPentone(self):
+        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.frame, self.arucoDict, parameters=self.arucoParams)
+        return (corners, ids, rejected)
 
 
     def findGlare(self):

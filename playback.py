@@ -86,7 +86,6 @@ class Playback(object):
                 self.lazer.setTargetCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
 
         if key == ord(' '):  # Mode
-            self.lazer.resetDynamic()
             if self.lazer.mode == Mode.intro:
                 self.lazer.changeMode(Mode.main)
             elif self.lazer.mode == Mode.main:

@@ -42,14 +42,16 @@ class Lazer(object):
         self.targetCenterX = None
         self.targetCenterY = None
         self.targetRadius = None
+        self.noAutoTarget = False
 
 
     def changeMode(self, mode):
         self.mode = mode
         self.detector.mode = mode
         if self.mode == Mode.main:
-            # take over target, if any
-            self.handleTarget(save=True)
+            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
+        elif self.mode == Mode.intro:
+            self.resetDynamic()
 
 
     def getDistanceToCenter(self, x, y):
@@ -58,10 +60,11 @@ class Lazer(object):
     
     def setTargetCenter(self, x, y, targetRadius):
         """Sets and enabled the target"""
-        logger.debug("Set target center: " + str(x) + " / " + str(y))
+        logger.info("Manually set target center: " + str(x) + " / " + str(y))
         self.targetCenterX = int(x)
         self.targetCenterY = int(y)
         self.targetRadius = int(targetRadius)
+        self.noAutoTarget = True
 
 
     def nextFrame(self):
@@ -78,6 +81,7 @@ class Lazer(object):
         if self.mode == Mode.intro:
             self.handleGlare()
             self.handleTarget()
+            self.handlePentone()
         elif self.mode == Mode.main:
             recordedHits = self.getHits()
             self.drawHits(recordedHits)
@@ -89,9 +93,19 @@ class Lazer(object):
         return True
 
 
+    def handlePentone(self):
+        (corners, ids, rejected) = self.detector.findPentone()
+        if len(corners) != 4:
+            return
+
+
     def handleTarget(self, save=False):
         if self.targetThresh > 150:
             # give up here
+            return
+        if self.targetCenterX != None:
+            return
+        if self.noAutoTarget:
             return
 
         contours, reliefs = self.detector.findTargets(self.targetThresh)
@@ -102,12 +116,11 @@ class Lazer(object):
 
         if len(reliefs) == 0:
             self.targetThresh += 1
-        elif save:
-            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
+        else:
+            print("Auto Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
             self.targetCenterX = reliefs[0].centerX
             self.targetCenterY = reliefs[0].centerY
             self.targetRadius = int(reliefs[0].w / 2)
-            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
 
 
     def handleGlare(self):
@@ -180,8 +193,11 @@ class Lazer(object):
             cv2.putText(self.frame, s, (o*1,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
             s = "Denoise: " + str(self.detector.doDenoise)
             cv2.putText(self.frame, s, ((o*0),60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            s= "Sharpen: " + str(self.detector.doSharpen)
+            s = "Sharpen: " + str(self.detector.doSharpen)
             cv2.putText(self.frame, s, (o*1,60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+
+            s = "Target: {}/{} {}".format(self.targetCenterX, self.targetCenterY, self.targetRadius)
+            cv2.putText(self.frame, s, (o*1,120), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         for idx, hit in enumerate(self.hits): 
             if hit.distance > 0:
