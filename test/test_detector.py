@@ -55,3 +55,15 @@ class DetectorTest(unittest.TestCase):
         self.assertEqual(reliefs[0].centerY, 614)
         self.assertEqual(reliefs[0].w, 290)
 
+
+    def test_aruco(self):
+        filename = "test-aruco.jpg"
+        capture = cv2.VideoCapture(Basepath + filename)
+        ok, frame = capture.read()
+        self.assertTrue(ok)
+        detector = Detector(thresh=14)
+        detector.initFrame(frame)
+
+        (corners, ids, rejected) = detector.findAruco()
+        self.assertEqual(len(corners), 4)
+        self.assertEqual(len(ids), 4)
