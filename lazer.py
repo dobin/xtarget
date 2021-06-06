@@ -106,20 +106,31 @@ class Lazer(object):
         (corners, ids, rejected) = self.detector.findAruco()
         if len(corners) != 4:
             return
-
         self.arucoCorners = corners
         self.arucoIds = ids
         logger.info("Found aruco {} {}".format(len(corners), len(ids)))
 
         self.projector.setAruco(self.arucoCorners, self.arucoIds)
+
+        # TEST for hit
         recordedHit = RecordedHit()
-        recordedHit.x = 290
-        recordedHit.y = 358
+        recordedHit.x = 250
+        recordedHit.y = 318
         recordedHit.radius = 3
         cv2.circle(self.frame, 
             (recordedHit.x, recordedHit.y), recordedHit.radius, 
             (0, 255, 0), 4)
         self.projector.handleShot(recordedHit)
+
+
+    def drawArucoArea(self):
+        # draw aruco area
+        a = (int(self.arucoCorners[3][0][0][0]), int(self.arucoCorners[3][0][0][1]))
+        b = (int(self.arucoCorners[0][0][2][0]), int(self.arucoCorners[0][0][2][1]))
+        cv2.rectangle(self.frame, 
+            a,
+            b,
+            (0,255,255), 2)
 
 
     def handleTarget(self, save=False):
@@ -144,6 +155,10 @@ class Lazer(object):
             self.targetCenterX = reliefs[0].centerX
             self.targetCenterY = reliefs[0].centerY
             self.targetRadius = int(reliefs[0].w / 2)
+
+
+    def drawTarget(self):
+        cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
 
 
     def handleGlare(self):
@@ -198,8 +213,15 @@ class Lazer(object):
 
     def displayFrame(self):
         """Displays the current frame in the window, with UI data written on it"""
-        o = 300
 
+        # Stuff we found out
+        if self.targetCenterX != None:
+            self.drawTarget()
+        if self.arucoCorners != None:
+            self.drawArucoArea()
+
+        # UI
+        o = 300
         color = (255, 255, 255)
         s= "Tresh: " + str(self.detector.thresh)
         cv2.putText(self.frame, s, (o*0,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
@@ -250,9 +272,7 @@ class Lazer(object):
             s = "Press SPACE to stop"
             cv2.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        if self.targetCenterX != None:
-            cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
-
+        # draw
         cv2.imshow('Video', self.frame)
         if self.debug:
             cv2.imshow('Mask', self.detector.mask)

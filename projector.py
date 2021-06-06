@@ -40,6 +40,7 @@ class Projector():
         self.arucoSymbolSize = 100
         self.arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
 
+        # Aruco Transform
         self.H = None
         self.srcMat = None
         self.dstMat = None
@@ -49,8 +50,6 @@ class Projector():
 
     def initAruco(self):
         l = self.arucoSymbolSize
-        #tag = np.zeros((l, l, 1), dtype="uint8")
-        #self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 923, l, tag, 1)
         self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 923, l)
         self.arucoB = cv2.aruco.drawMarker(self.arucoDict, 1001, l)
         self.arucoC = cv2.aruco.drawMarker(self.arucoDict, 241, l)
@@ -69,7 +68,6 @@ class Projector():
             (0, 255, 0), 1)
 
         # this is stupid
-
         # A
         imageCopyInto(frame, self.arucoA, 
             self.arucoX, 
@@ -80,7 +78,6 @@ class Projector():
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
             (255, 255, 255), 10
         )
-
         # B
         imageCopyInto(frame, self.arucoB, 
             self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
@@ -91,9 +88,8 @@ class Projector():
             (self.arucoX + self.arucoWidth - self.arucoSymbolSize+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
             (255, 255, 255), 10
         )
-
         # C
-        imageCopyInto(frame, self.arucoA, 
+        imageCopyInto(frame, self.arucoC, 
             self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
             self.arucoY + self.arucoHeight - self.arucoSymbolSize
         )
@@ -102,9 +98,8 @@ class Projector():
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
             (255, 255, 255), 10
         )
-
         # D
-        imageCopyInto(frame, self.arucoA, 
+        imageCopyInto(frame, self.arucoD, 
             self.arucoX, 
             self.arucoY + self.arucoHeight - self.arucoSymbolSize
         )
@@ -114,22 +109,11 @@ class Projector():
             (255, 255, 255), 10
         )
 
-
-        #imageCopyInto(frame, self.arucoC, self.arucoX + (self.arucoWidth), self.arucoY + (self.arucoHeight))
-        #imageCopyInto(frame, self.arucoD, self.arucoX - (self.arucoWidth>>1), self.arucoY + (self.arucoHeight))
-
+        # the actual target circle
         cv2.circle(frame, 
             (self.projectorTargetCenterX, self.projectorTargetCenterY), 
             self.projectorTargetRadius, 
             self.colorTarget, 10)
-
-        #cv2.imwrite("test-aruco2.jpg", frame)
-
-        #if self.recordedHit != None:
-        #    cv2.circle(frame, 
-        #        (int(self.recordedHit.x * self.offsetX), int(self.recordedHit.y * self.offsetY)), 
-        #        int(self.recordedHit.radius * self.offsetRadius), 
-        #        self.colorHit, 4)
 
         cv2.imshow('Projector', frame)
 
@@ -192,16 +176,6 @@ class Projector():
         cv2.circle(self.frame, 
             (x+self.arucoX, y+self.arucoY), recordedHit.radius, 
             self.colorHit, 4)
-
-        #cv2.circle(self.frame, 
-        #    (50, 50), 4, 
-        #    self.colorHit, 4)
-
-        #cv2.circle(self.frame, 
-        #    (int(self.recordedHit.x * self.offsetX), int(self.recordedHit.y * self.offsetY)), 
-        #    int(self.recordedHit.radius * self.offsetRadius), 
-        #    self.colorHit, 4)
-
 
 
     def translate(self, x, y):
