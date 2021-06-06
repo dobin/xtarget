@@ -128,8 +128,6 @@ class Projector():
         self.offsetY = (self.projectorTargetCenterY / self.camTargetCenterY)
         self.offsetRadius = (self.projectorTargetRadius / self.camTargetRadius)
 
-        logging.info("OffsetX: " + str(self.offsetX))
-
 
     def setAruco(self, arucoCorners, arucoIds):
         ids = arucoIds.flatten()
@@ -180,12 +178,9 @@ class Projector():
 
     def translate(self, x, y):
         H_inv = np.linalg.inv(self.H)
-        #H_inv = self.H
-
         p = np.array((x,y,1)).reshape((3,1))
         temp_p = H_inv.dot(p)
         sum = np.sum(temp_p ,1)
         px = int(round(sum[0]/sum[2]))
         py = int(round(sum[1]/sum[2]))
-
         return px, py

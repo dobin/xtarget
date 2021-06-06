@@ -113,14 +113,15 @@ class Lazer(object):
         self.projector.setAruco(self.arucoCorners, self.arucoIds)
 
         # TEST for hit
-        recordedHit = RecordedHit()
-        recordedHit.x = 250
-        recordedHit.y = 318
-        recordedHit.radius = 3
-        cv2.circle(self.frame, 
-            (recordedHit.x, recordedHit.y), recordedHit.radius, 
-            (0, 255, 0), 4)
-        self.projector.handleShot(recordedHit)
+        if False:
+            recordedHit = RecordedHit()
+            recordedHit.x = 250
+            recordedHit.y = 318
+            recordedHit.radius = 3
+            cv2.circle(self.frame, 
+                (recordedHit.x, recordedHit.y), recordedHit.radius, 
+                (0, 255, 0), 4)
+            self.projector.handleShot(recordedHit)
 
 
     def drawArucoArea(self):
