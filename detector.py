@@ -49,7 +49,7 @@ class Detector():
         #    return []
 
 
-    def findPentone(self):
+    def findAruco(self):
         (corners, ids, rejected) = cv2.aruco.detectMarkers(self.frame, self.arucoDict, parameters=self.arucoParams)
         return (corners, ids, rejected)
 

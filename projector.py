@@ -30,11 +30,11 @@ class Projector():
         self.colorTarget = (200, 0, 0)
         self.colorHit = (0, 200, 0)
 
-        # Pentone
-        self.pentoneX = self.projectorTargetCenterX - 100
-        self.pentoneY = self.projectorTargetCenterY - 100
-        self.pentoneWidth = 179
-        self.pentoneHeight = 227
+        # Aruco
+        self.arucoX = self.projectorTargetCenterX - 100
+        self.arucoY = self.projectorTargetCenterY - 100
+        self.arucoWidth = 179
+        self.arucoHeight = 227
 
         self.H = None
         self.srcMat = None
@@ -44,10 +44,10 @@ class Projector():
     def draw(self):
         frame = self.frame.copy()
 
-        # pantone
+        # aruco
         cv2.rectangle(frame, 
-            (self.pentoneX, self.pentoneY), 
-            (self.pentoneX+self.pentoneWidth, self.pentoneY+self.pentoneHeight),
+            (self.arucoX, self.arucoY), 
+            (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
             (0, 255, 0), 3)
 
         cv2.circle(frame, 
@@ -100,7 +100,7 @@ class Projector():
         # grab the spatial dimensions of the source image and define the
         # transform matrix for the *source* image in top-left, top-right,
         # bottom-right, and bottom-left order
-        srcMat = np.array([[0, 0], [self.pentoneWidth, 0], [self.pentoneWidth, self.pentoneHeight], [0, self.pentoneHeight]])
+        srcMat = np.array([[0, 0], [self.arucoWidth, 0], [self.arucoWidth, self.arucoHeight], [0, self.arucoHeight]])
         # compute the homography matrix
         (H, _) = cv2.findHomography(srcMat, dstMat)
 
@@ -118,9 +118,9 @@ class Projector():
         print("Shot at   : {}/{}".format(recordedHit.x, recordedHit.y))
         x, y = self.translate(recordedHit.x, self.recordedHit.y)
         print("Shot trans1: {}/{}".format(x, y))
-        print("Shot trans2: {}/{}".format(x+self.pentoneX, y+self.pentoneY))
+        print("Shot trans2: {}/{}".format(x+self.arucoX, y+self.arucoY))
         cv2.circle(self.frame, 
-            (x+self.pentoneX, y+self.pentoneY), recordedHit.radius, 
+            (x+self.arucoX, y+self.arucoY), recordedHit.radius, 
             self.colorHit, 4)
 
         #cv2.circle(self.frame, 

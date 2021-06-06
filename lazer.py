@@ -87,7 +87,7 @@ class Lazer(object):
         if self.mode == Mode.intro:
             self.handleGlare()
             self.handleTarget()
-            self.handlePentone()
+            self.handleAruco()
         elif self.mode == Mode.main:
             recordedHits = self.getHits()
             self.drawHits(recordedHits)
@@ -99,17 +99,17 @@ class Lazer(object):
         return True
 
 
-    def handlePentone(self):
+    def handleAruco(self):
         if self.pantonCorners != None:
             return
 
-        (corners, ids, rejected) = self.detector.findPentone()
+        (corners, ids, rejected) = self.detector.findAruco()
         if len(corners) != 4:
             return
 
         self.pantonCorners = corners
         self.pantonIds = ids
-        logger.info("Found pentone {} {}".format(len(corners), len(ids)))
+        logger.info("Found aruco {} {}".format(len(corners), len(ids)))
 
         self.projector.setPanton(self.pantonCorners, self.pantonIds)
         recordedHit = RecordedHit()
