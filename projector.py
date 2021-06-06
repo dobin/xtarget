@@ -3,6 +3,7 @@ import numpy as np
 import logging
 
 from model import OpencvRect
+from gfxutils import imageCopyInto
 
 logger = logging.getLogger(__name__)
 
@@ -29,31 +30,100 @@ class Projector():
         # colors
         self.colorTarget = (200, 0, 0)
         self.colorHit = (0, 200, 0)
+        self.colorAruco = (255, 255, 255)
 
         # Aruco
-        self.arucoX = self.projectorTargetCenterX - 100
-        self.arucoY = self.projectorTargetCenterY - 100
-        self.arucoWidth = 179
-        self.arucoHeight = 227
+        self.arucoX = self.projectorTargetCenterX - 250
+        self.arucoY = self.projectorTargetCenterY - 250
+        self.arucoWidth = 500
+        self.arucoHeight = 500
+        self.arucoSymbolSize = 100
+        self.arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
 
         self.H = None
         self.srcMat = None
         self.dstMat = None
+
+        self.initAruco()
         
 
+    def initAruco(self):
+        l = self.arucoSymbolSize
+        #tag = np.zeros((l, l, 1), dtype="uint8")
+        #self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 923, l, tag, 1)
+        self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 923, l)
+        self.arucoB = cv2.aruco.drawMarker(self.arucoDict, 1001, l)
+        self.arucoC = cv2.aruco.drawMarker(self.arucoDict, 241, l)
+        self.arucoD = cv2.aruco.drawMarker(self.arucoDict, 1007, l)
+
+        
     def draw(self):
         frame = self.frame.copy()
 
         # aruco
+        lineWidth = 10
+        lineHalfWidth = lineWidth >> 1
         cv2.rectangle(frame, 
             (self.arucoX, self.arucoY), 
             (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
-            (0, 255, 0), 3)
+            (0, 255, 0), 1)
+
+        # this is stupid
+
+        # A
+        imageCopyInto(frame, self.arucoA, 
+            self.arucoX, 
+            self.arucoY
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth), 
+            (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
+            (255, 255, 255), 10
+        )
+
+        # B
+        imageCopyInto(frame, self.arucoB, 
+            self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
+            self.arucoY
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth), 
+            (self.arucoX + self.arucoWidth - self.arucoSymbolSize+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
+            (255, 255, 255), 10
+        )
+
+        # C
+        imageCopyInto(frame, self.arucoA, 
+            self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
+            self.arucoY + self.arucoHeight - self.arucoSymbolSize
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
+            (self.arucoX+self.arucoSymbolSize+lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
+            (255, 255, 255), 10
+        )
+
+        # D
+        imageCopyInto(frame, self.arucoA, 
+            self.arucoX, 
+            self.arucoY + self.arucoHeight - self.arucoSymbolSize
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
+            (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
+            (255, 255, 255), 10
+        )
+
+
+        #imageCopyInto(frame, self.arucoC, self.arucoX + (self.arucoWidth), self.arucoY + (self.arucoHeight))
+        #imageCopyInto(frame, self.arucoD, self.arucoX - (self.arucoWidth>>1), self.arucoY + (self.arucoHeight))
 
         cv2.circle(frame, 
             (self.projectorTargetCenterX, self.projectorTargetCenterY), 
             self.projectorTargetRadius, 
             self.colorTarget, 10)
+
+        #cv2.imwrite("test-aruco2.jpg", frame)
 
         #if self.recordedHit != None:
         #    cv2.circle(frame, 
