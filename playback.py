@@ -88,7 +88,6 @@ class Playback(object):
         if key == ord(' '):  # Mode
             if self.lazer.mode == Mode.intro:
                 self.lazer.changeMode(Mode.main)
-                #self.lazer.setTargetCenter(self.trackX, self.trackY, self.hitRadius)
             elif self.lazer.mode == Mode.main:
                 self.lazer.changeMode(Mode.intro)
 
