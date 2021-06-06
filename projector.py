@@ -147,8 +147,8 @@ class Projector():
         logging.info("OffsetX: " + str(self.offsetX))
 
 
-    def setPanton(self, pantonCorners, pantonIds):
-        ids = pantonIds.flatten()
+    def setAruco(self, arucoCorners, arucoIds):
+        ids = arucoIds.flatten()
         refPts = []
         # loop over the IDs of the ArUco markers in top-left, top-right,
         # bottom-right, and bottom-left order
@@ -156,7 +156,7 @@ class Projector():
             # grab the index of the corner with the current ID and append the
             # corner (x, y)-coordinates to our list of reference points
             j = np.squeeze(np.where(ids == i))
-            corner = np.squeeze(pantonCorners[j])
+            corner = np.squeeze(arucoCorners[j])
             refPts.append(corner)
 
         # unpack our ArUco reference points and use the reference points to

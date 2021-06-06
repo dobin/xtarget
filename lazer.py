@@ -45,9 +45,9 @@ class Lazer(object):
         self.targetRadius = None
         self.noAutoTarget = False
 
-        # data for panton
-        self.pantonCorners = None
-        self.pantonIds = None
+        # data for aruco
+        self.arucoCorners = None
+        self.arucoIds = None
 
 
     def changeMode(self, mode):
@@ -55,7 +55,7 @@ class Lazer(object):
         self.detector.mode = mode
         if self.mode == Mode.main:
             self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
-            self.projector.setPanton(self.pantonCorners, self.pantonIds)
+            self.projector.setAruco(self.arucoCorners, self.arucoIds)
         elif self.mode == Mode.intro:
             self.resetDynamic()
 
@@ -100,18 +100,18 @@ class Lazer(object):
 
 
     def handleAruco(self):
-        if self.pantonCorners != None:
+        if self.arucoCorners != None:
             return
 
         (corners, ids, rejected) = self.detector.findAruco()
         if len(corners) != 4:
             return
 
-        self.pantonCorners = corners
-        self.pantonIds = ids
+        self.arucoCorners = corners
+        self.arucoIds = ids
         logger.info("Found aruco {} {}".format(len(corners), len(ids)))
 
-        self.projector.setPanton(self.pantonCorners, self.pantonIds)
+        self.projector.setAruco(self.arucoCorners, self.arucoIds)
         recordedHit = RecordedHit()
         recordedHit.x = 290
         recordedHit.y = 358
