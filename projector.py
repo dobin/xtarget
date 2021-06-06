@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 class Projector():
     def __init__(self, height=1080, width=1920):
-        self.frame = np.zeros((height,width,3), np.uint8)
+        self.frameSrc = np.zeros((height,width,3), np.uint8)
+        self.frame = None
         self.recordedHit = None
         self.width = width
         self.height = height
@@ -32,32 +33,34 @@ class Projector():
         self.colorHit = (0, 200, 0)
         self.colorAruco = (255, 255, 255)
 
-        # Aruco
+        # aruco target area we project
         self.arucoX = self.projectorTargetCenterX - 250
         self.arucoY = self.projectorTargetCenterY - 250
         self.arucoWidth = 500
         self.arucoHeight = 500
+        # aruco library options
         self.arucoSymbolSize = 100
         self.arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
-
-        # Aruco Transform
-        self.H = None
-        self.srcMat = None
-        self.dstMat = None
-
-        self.initAruco()
-        
-
-    def initAruco(self):
+        # aruca symbols
         l = self.arucoSymbolSize
         self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 923, l)
         self.arucoB = cv2.aruco.drawMarker(self.arucoDict, 1001, l)
         self.arucoC = cv2.aruco.drawMarker(self.arucoDict, 241, l)
         self.arucoD = cv2.aruco.drawMarker(self.arucoDict, 1007, l)
 
+        # aruco cam->projector transform
+        self.H = None
+        self.srcMat = None
+        self.dstMat = None
+
+
+    def initFrame(self):
+        self.frame = self.frameSrc.copy()
         
-    def draw(self):
-        frame = self.frame.copy()
+
+    def drawAruco(self):
+        """Draw the four Aruco squares we project"""
+        frame = self.frame
 
         # aruco
         lineWidth = 10
@@ -109,13 +112,18 @@ class Projector():
             (255, 255, 255), 10
         )
 
+
+    def drawTargetCircle(self):
+        """Draw the actual target circle we project"""
+        frame = self.frame
         # the actual target circle
         cv2.circle(frame, 
             (self.projectorTargetCenterX, self.projectorTargetCenterY), 
             self.projectorTargetRadius, 
             self.colorTarget, 10)
 
-        cv2.imshow('Projector', frame)
+    def show(self):
+        cv2.imshow('Projector', self.frame)
 
 
     def setTargetCenter(self, x, y, targetRadius):
@@ -129,7 +137,10 @@ class Projector():
         self.offsetRadius = (self.projectorTargetRadius / self.camTargetRadius)
 
 
-    def setAruco(self, arucoCorners, arucoIds):
+    def setCamAruco(self, arucoCorners, arucoIds):
+        """Set the detected Cam/Video Arucos, and calculate the transformation matrix to us"""
+        if arucoCorners == None or arucoIds == None:
+            return
         ids = arucoIds.flatten()
         refPts = []
         # loop over the IDs of the ArUco markers in top-left, top-right,
@@ -163,6 +174,9 @@ class Projector():
 
 
     def handleShot(self, recordedHit):
+        if self.H == None:
+            return
+
         # check if shot hit something
         #  to make target disappear
         self.recordedHit = recordedHit

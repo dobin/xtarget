@@ -55,7 +55,7 @@ class Lazer(object):
         self.detector.mode = mode
         if self.mode == Mode.main:
             self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
-            self.projector.setAruco(self.arucoCorners, self.arucoIds)
+            self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
         elif self.mode == Mode.intro:
             self.resetDynamic()
 
@@ -110,7 +110,7 @@ class Lazer(object):
         self.arucoIds = ids
         logger.info("Found aruco {} {}".format(len(corners), len(ids)))
 
-        self.projector.setAruco(self.arucoCorners, self.arucoIds)
+        self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
 
         # TEST for hit
         if False:
@@ -124,14 +124,21 @@ class Lazer(object):
             self.projector.handleShot(recordedHit)
 
 
-    def drawArucoArea(self):
-        # draw aruco area
-        a = (int(self.arucoCorners[3][0][0][0]), int(self.arucoCorners[3][0][0][1]))
-        b = (int(self.arucoCorners[0][0][2][0]), int(self.arucoCorners[0][0][2][1]))
-        cv2.rectangle(self.frame, 
-            a,
-            b,
-            (0,255,255), 2)
+    def drawAruco(self):
+        self.projector.initFrame()
+        if self.mode == Mode.intro:
+            if self.arucoCorners != None:
+                # draw aruco area
+                a = (int(self.arucoCorners[3][0][0][0]), int(self.arucoCorners[3][0][0][1]))
+                b = (int(self.arucoCorners[0][0][2][0]), int(self.arucoCorners[0][0][2][1]))
+                cv2.rectangle(self.frame, 
+                    a,
+                    b,
+                    (0,255,255), 2)
+            
+            self.projector.drawAruco()
+        elif self.mode == Mode.main:
+            self.projector.drawTargetCircle()
 
 
     def handleTarget(self, save=False):
@@ -218,8 +225,7 @@ class Lazer(object):
         # Stuff we found out
         if self.targetCenterX != None:
             self.drawTarget()
-        if self.arucoCorners != None:
-            self.drawArucoArea()
+        self.drawAruco()
 
         # UI
         o = 300
@@ -277,7 +283,7 @@ class Lazer(object):
         cv2.imshow('Video', self.frame)
         if self.debug:
             cv2.imshow('Mask', self.detector.mask)
-        self.projector.draw()
+        self.projector.show()
 
 
     def saveCurrentFrame(self, recordedHit=None):
