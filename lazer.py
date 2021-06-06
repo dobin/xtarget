@@ -21,7 +21,6 @@ class Lazer(object):
         self.detector = Detector(thresh=thresh)
         self.projector = Projector()
         self.debug = True
-        self.glareEnabled = False
 
         # static hit options
         self.hitGraceTime = 30  # How many frames between detections (1s)
@@ -43,21 +42,21 @@ class Lazer(object):
         self.targetCenterX = None
         self.targetCenterY = None
         self.targetRadius = None
-        self.noAutoTarget = False
 
-        # data for aruco
-        self.arucoCorners = None
-        self.arucoIds = None
+        self.tmpTargetCenterX = None
+        self.tmpTargetCenterY = None
+        self.tmpTargetRadius = None
 
 
     def changeMode(self, mode):
         self.mode = mode
         self.detector.mode = mode
         if self.mode == Mode.main:
-            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
-            self.projector.setAruco(self.arucoCorners, self.arucoIds)
-        elif self.mode == Mode.intro:
-            self.resetDynamic()
+            logger.info("Change mode: Going to main")
+            # take over target, if any
+            if self.tmpTargetCenterX != None:
+                self.projector.setTargetCenter(self.tmpTargetCenterX, self.tmpTargetCenterY, self.tmpTargetRadius)
+        #    self.handleTarget(save=True)
 
 
     def getDistanceToCenter(self, x, y):
@@ -66,11 +65,11 @@ class Lazer(object):
     
     def setTargetCenter(self, x, y, targetRadius):
         """Sets and enabled the target"""
-        logger.info("Manually set target center: " + str(x) + " / " + str(y))
+        logger.debug("Set target center: " + str(x) + " / " + str(y))
         self.targetCenterX = int(x)
         self.targetCenterY = int(y)
         self.targetRadius = int(targetRadius)
-        self.noAutoTarget = True
+        self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
 
 
     def nextFrame(self):
@@ -87,7 +86,6 @@ class Lazer(object):
         if self.mode == Mode.intro:
             self.handleGlare()
             self.handleTarget()
-            self.handleAruco()
         elif self.mode == Mode.main:
             recordedHits = self.getHits()
             self.drawHits(recordedHits)
@@ -99,72 +97,35 @@ class Lazer(object):
         return True
 
 
-    def handleAruco(self):
-        if self.arucoCorners != None:
-            return
-
-        (corners, ids, rejected) = self.detector.findAruco()
-        if len(corners) != 4:
-            return
-        self.arucoCorners = corners
-        self.arucoIds = ids
-        logger.info("Found aruco {} {}".format(len(corners), len(ids)))
-
-        self.projector.setAruco(self.arucoCorners, self.arucoIds)
-
-        # TEST for hit
-        if False:
-            recordedHit = RecordedHit()
-            recordedHit.x = 250
-            recordedHit.y = 318
-            recordedHit.radius = 3
-            cv2.circle(self.frame, 
-                (recordedHit.x, recordedHit.y), recordedHit.radius, 
-                (0, 255, 0), 4)
-            self.projector.handleShot(recordedHit)
-
-
-    def drawArucoArea(self):
-        # draw aruco area
-        a = (int(self.arucoCorners[3][0][0][0]), int(self.arucoCorners[3][0][0][1]))
-        b = (int(self.arucoCorners[0][0][2][0]), int(self.arucoCorners[0][0][2][1]))
-        cv2.rectangle(self.frame, 
-            a,
-            b,
-            (0,255,255), 2)
-
-
     def handleTarget(self, save=False):
         if self.targetThresh > 150:
             # give up here
-            return
-        if self.targetCenterX != None:
-            return
-        if self.noAutoTarget:
             return
 
         contours, reliefs = self.detector.findTargets(self.targetThresh)
         for relief in reliefs:
             cv2.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
+
+            # temporarily store it
+            self.tmpTargetCenterX = relief.centerX
+            self.tmpTargetCenterY = relief.centerY
+            self.tmpTargetRadius = int(relief.w / 2)
+
             for c in contours:
-                cv2.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
+                cv2.drawContours(self.frame, [c], -1, (50, 50, 50), 2)
+
 
         if len(reliefs) == 0:
             self.targetThresh += 1
-        else:
-            print("Auto Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
-            self.targetCenterX = reliefs[0].centerX
-            self.targetCenterY = reliefs[0].centerY
-            self.targetRadius = int(reliefs[0].w / 2)
-
-
-    def drawTarget(self):
-        cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
+#        elif save:
+#            print("Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
+#            self.targetCenterX = reliefs[0].centerX
+#            self.targetCenterY = reliefs[0].centerY
+#            self.targetRadius = int(reliefs[0].w / 2)
+#            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
 
 
     def handleGlare(self):
-        if not self.glareEnabled:
-            return
         glare = self.detector.findGlare()
         for rect in glare:
             cv2.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
@@ -214,15 +175,8 @@ class Lazer(object):
 
     def displayFrame(self):
         """Displays the current frame in the window, with UI data written on it"""
-
-        # Stuff we found out
-        if self.targetCenterX != None:
-            self.drawTarget()
-        if self.arucoCorners != None:
-            self.drawArucoArea()
-
-        # UI
         o = 300
+
         color = (255, 255, 255)
         s= "Tresh: " + str(self.detector.thresh)
         cv2.putText(self.frame, s, (o*0,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
@@ -241,11 +195,8 @@ class Lazer(object):
             cv2.putText(self.frame, s, (o*1,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
             s = "Denoise: " + str(self.detector.doDenoise)
             cv2.putText(self.frame, s, ((o*0),60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            s = "Sharpen: " + str(self.detector.doSharpen)
+            s= "Sharpen: " + str(self.detector.doSharpen)
             cv2.putText(self.frame, s, (o*1,60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-
-            s = "Target: {}/{} {}".format(self.targetCenterX, self.targetCenterY, self.targetRadius)
-            cv2.putText(self.frame, s, (o*1,120), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         for idx, hit in enumerate(self.hits): 
             if hit.distance > 0:
@@ -273,10 +224,12 @@ class Lazer(object):
             s = "Press SPACE to stop"
             cv2.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        # draw
+        if self.targetCenterX != None:
+            cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
+
         cv2.imshow('Video', self.frame)
-        if self.debug:
-            cv2.imshow('Mask', self.detector.mask)
+        #if self.debug:
+        #    cv2.imshow('Mask', self.detector.mask)
         self.projector.draw()
 
 
