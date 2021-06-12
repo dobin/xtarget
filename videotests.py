@@ -7,6 +7,7 @@ import os.path
 from gfxutils import getTime, readVideoFileConfig
 from lazer import Lazer
 from videostream import FileVideoStream
+from model import *
 
 
 tests = [
@@ -116,7 +117,7 @@ def testcase(basename):
     videoStream.initFile(filename)
     videoStream.setCrop(videoFileConfig['crop'])
 
-    lazer = Lazer(videoStream, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
+    lazer = Lazer(videoStream, mode=Mode.intro, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
 
     # get all testcases to check if all triggered
     yamlFilenameList = glob.glob(BASEDIR + basename + "_*.yaml")
@@ -127,7 +128,7 @@ def testcase(basename):
         if not hasFrame:
             break
 
-        recordedHits = lazer.detectAndDrawHits()
+        recordedHits = lazer.getHits()
         if len(recordedHits) > 0:
             recordedHit = recordedHits[0]
             print("Checking dot in frame " + str(videoStream.frameNr))

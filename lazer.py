@@ -85,9 +85,9 @@ class Lazer(object):
 
         self.detector.initFrame(frame=self.frame)
         if self.mode == Mode.intro:
-            self.handleGlare()
-            self.handleTarget()
-            self.handleAruco()
+            self.handleGlare()  # mask
+            self.handleTarget()  # mask2
+            self.handleAruco()  # mask2
         elif self.mode == Mode.main:
             recordedHits = self.getHits()
             self.drawHits(recordedHits)
@@ -105,7 +105,6 @@ class Lazer(object):
         if self.videoStream.frameNr % 10 != 0:
             return
 
-
         (corners, ids, rejected) = self.detector.findAruco()
         for corner in corners:
             a = (int(corner[0][0][0]), int(corner[0][0][1]))
@@ -116,24 +115,12 @@ class Lazer(object):
                 (0,255,255), 2)
 
         if len(corners) != 4:
-            print("Not enough aruco: {}".format(len(corners)))
             return
+
         self.arucoCorners = corners
         self.arucoIds = ids
         logger.info("Found 4 aruco {} {}".format(len(corners), len(ids)))
-
         self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
-
-        # TEST for hit
-        if False:
-            recordedHit = RecordedHit()
-            recordedHit.x = 250
-            recordedHit.y = 318
-            recordedHit.radius = 3
-            cv2.circle(self.frame, 
-                (recordedHit.x, recordedHit.y), recordedHit.radius, 
-                (0, 255, 0), 4)
-            self.projector.handleShot(recordedHit)
 
 
     def drawAruco(self):
@@ -204,11 +191,11 @@ class Lazer(object):
             # wait a bit between detections
             if (self.videoStream.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
                 return []
-
+        
         recordedHits = self.detector.findHits(self.hitMinRadius)
         if len(recordedHits) > 0:
             self.hitLastFoundFrameNr = self.videoStream.frameNr
-            logger.debug("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
+            logger.info("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
             self.projector.handleShot(recordedHits[0])
 
         return recordedHits
