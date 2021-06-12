@@ -35,14 +35,15 @@ class Detector():
 
         # Mask: remove small artefacts (helpful for removing some glare, and improving detection)
         if self.doSharpen:
-            self.mask = cv2.medianBlur(self.grey,5)
+            m = cv2.medianBlur(self.grey,5)
             # self.mask = cv2.blur(self.mask,(5,5))
-            self.mask = cv2.erode(self.mask, (7,7), iterations=3)
+            m = cv2.erode(m, (7,7), iterations=3)
 
         # save copy of mask for now
-        self.mask2 = self.mask.copy()
+        #self.mask2 = self.mask.copy()
+        self.mask2 = m
         # Mask: threshold, throw away all bytes below thresh (bytes)
-        _, self.mask = cv2.threshold(self.mask, 255-self.thresh, 255, cv2.THRESH_BINARY)
+        _, self.mask = cv2.threshold(m, 255-self.thresh, 255, cv2.THRESH_BINARY)
 
         ##cv2.imshow("m3", self.mask2)
         
