@@ -19,6 +19,7 @@ class Detector():
 
     def init(self):
         self.frame = None
+        self.grey = None
         self.mask = None
         self.previousMask = None
         self.mask2 = None
@@ -29,12 +30,12 @@ class Detector():
         self.previousMask = self.mask
 
         # Mask: Make to grey
-        self.mask = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        self.grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ##self.mask3 = self.mask.copy()
 
         # Mask: remove small artefacts (helpful for removing some glare, and improving detection)
         if self.doSharpen:
-            self.mask = cv2.medianBlur(self.mask,5)
+            self.mask = cv2.medianBlur(self.grey,5)
             # self.mask = cv2.blur(self.mask,(5,5))
             self.mask = cv2.erode(self.mask, (7,7), iterations=3)
 
@@ -53,7 +54,7 @@ class Detector():
 
 
     def findAruco(self):
-        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.mask2, self.arucoDict, parameters=self.arucoParams)
+        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.grey, self.arucoDict, parameters=self.arucoParams)
         return (corners, ids, rejected)
 
 
