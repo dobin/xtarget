@@ -55,7 +55,7 @@ class QueueInputStream(InputStream):
 
         # initialize the queue used to store frames read from
         # the video file
-        self.Q = Queue(maxsize=30)
+        self.Q = Queue(maxsize=8)
         # intialize thread
         self.thread = Thread(target=self.update, args=())
         self.thread.daemon = True

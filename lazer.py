@@ -151,6 +151,7 @@ class Lazer(object):
                 self.projector.drawAruco()
         elif self.mode == Mode.main:
             self.projector.drawTargetCircle()
+            self.projector.drawHits()
 
 
     def handleTarget(self, save=False):

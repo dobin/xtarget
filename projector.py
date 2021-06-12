@@ -4,7 +4,7 @@ import logging
 
 from numpy.lib.arraysetops import isin
 
-from model import OpencvRect
+from model import OpencvRect, RecordedHit
 from gfxutils import imageCopyInto
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class Projector():
 
         # colors
         self.colorTarget = (200, 0, 0)
-        self.colorHit = (0, 200, 0)
+        self.colorHit = (0, 100, 0)
         self.colorAruco = (255, 255, 255)
 
         # aruco target area we project
@@ -63,12 +63,13 @@ class Projector():
     def drawAruco(self):
         """Draw the four Aruco squares we project"""
         frame = self.frame
+        c = (200, 200, 200)
 
         # aruco
         # When running the detection on a single marker, the results are best when 
         # the size of the white margin is at least as big as the black border of the marker.
         lineWidth = 20
-        lineHalfWidth = (lineWidth >> 1) + 4
+        lineHalfWidth = (lineWidth >> 1) + 0
         #cv2.rectangle(frame, 
         #    (self.arucoX, self.arucoY), 
         #    (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
@@ -83,7 +84,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth), 
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
-            (255, 255, 255), lineWidth
+            c, lineWidth
         )
         # B
         imageCopyInto(frame, self.arucoB, 
@@ -93,7 +94,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth), 
             (self.arucoX + self.arucoWidth - self.arucoSymbolSize+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
-            (255, 255, 255), lineWidth
+            c, lineWidth
         )
         # C
         imageCopyInto(frame, self.arucoC, 
@@ -103,7 +104,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
-            (255, 255, 255), lineWidth
+            c, lineWidth
         )
         # D
         imageCopyInto(frame, self.arucoD, 
@@ -113,8 +114,15 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
-            (255, 255, 255), lineWidth
+            c, lineWidth
         )
+
+
+    def drawHits(self):
+        if self.recordedHit is not None:
+            cv2.circle(self.frame, 
+                (self.recordedHit.x, self.recordedHit.y), 20, 
+                self.colorHit, 4)
 
 
     def drawTargetCircle(self):
@@ -125,6 +133,7 @@ class Projector():
             (self.projectorTargetCenterX, self.projectorTargetCenterY), 
             self.projectorTargetRadius, 
             self.colorTarget, 10)
+
 
     def show(self):
         cv2.imshow('Projector', self.frame)
@@ -195,17 +204,19 @@ class Projector():
         if self.H is None:
             return
 
-        # check if shot hit something
-        #  to make target disappear
-        self.recordedHit = recordedHit
+        x, y = self.translate(recordedHit.x, recordedHit.y)
 
         print("Shot at   : {}/{}".format(recordedHit.x, recordedHit.y))
-        x, y = self.translate(recordedHit.x, self.recordedHit.y)
         print("Shot trans1: {}/{}".format(x, y))
         print("Shot trans2: {}/{}".format(x+self.arucoX, y+self.arucoY))
-        cv2.circle(self.frame, 
-            (x+self.arucoX, y+self.arucoY), recordedHit.radius, 
-            self.colorHit, 4)
+        #cv2.circle(self.frame, 
+        #    (x+self.arucoX, y+self.arucoY), recordedHit.radius, 
+        #    self.colorHit, 4)
+
+        self.recordedHit = RecordedHit()
+        self.recordedHit.x = x+self.arucoX
+        self.recordedHit.y = y+self.arucoY
+        self.recordedHit.radius = recordedHit.radius
 
 
     def translate(self, x, y):
