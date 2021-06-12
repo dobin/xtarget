@@ -55,7 +55,7 @@ class Detector():
 
 
     def findAruco(self):
-        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.mask, self.arucoDict, parameters=self.arucoParams)
+        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.mask2, self.arucoDict, parameters=self.arucoParams)
         return (corners, ids, rejected)
 
 

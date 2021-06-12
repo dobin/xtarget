@@ -68,25 +68,12 @@ class DetectorTest(unittest.TestCase):
         self.assertEqual(len(corners), 4)
         self.assertEqual(len(ids), 4)
 
-
-    def test_aruco2(self):
-        filename = "test-aruco2.jpg"
-        capture = cv2.VideoCapture(Basepath + filename)
-        ok, frame = capture.read()
-        self.assertTrue(ok)
-        detector = Detector(thresh=14)
-        detector.initFrame(frame)
-
-        (corners, ids, rejected) = detector.findAruco()
-        self.assertEqual(len(corners), 4)
-        self.assertEqual(len(ids), 4)
-
-        self.assertEqual(corners[0][0][0][0], 734.0)
-        self.assertEqual(corners[0][0][1][0], 840.0)
+        self.assertEqual(corners[0][0][0][0], 646.0)
+        self.assertEqual(corners[0][0][1][0], 742.0)
 
 
     def test_aruco_projector(self):
-        filename = "test-aruco-projector.jpg"
+        filename = "aruco-projector-bigger1.jpg"
         capture = cv2.VideoCapture(Basepath + filename)
         ok, frame = capture.read()
         self.assertTrue(ok)
@@ -97,4 +84,29 @@ class DetectorTest(unittest.TestCase):
         self.assertEqual(len(corners), 4)
         self.assertEqual(len(ids), 4)
 
+
+    def test_aruco_projector2(self):
+        filename = "aruco-projector-bigger2.jpg"
+        capture = cv2.VideoCapture(Basepath + filename)
+        ok, frame = capture.read()
+        self.assertTrue(ok)
+        detector = Detector(thresh=14)
+        detector.initFrame(frame)
+
+        (corners, ids, rejected) = detector.findAruco()
+        self.assertEqual(len(corners), 4)
+        self.assertEqual(len(ids), 4)
+
+
+    def test_aruco_projector3(self):
+        filename = "aruco-projector-bigger3.jpg"
+        capture = cv2.VideoCapture(Basepath + filename)
+        ok, frame = capture.read()
+        self.assertTrue(ok)
+        detector = Detector(thresh=14)
+        detector.initFrame(frame)
+
+        (corners, ids, rejected) = detector.findAruco()
+        self.assertEqual(len(corners), 4)
+        self.assertEqual(len(ids), 4)
 

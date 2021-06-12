@@ -66,9 +66,9 @@ class Projector():
         c = (200, 200, 200)
 
         # aruco
-        # When running the detection on a single marker, the results are best when 
-        # the size of the white margin is at least as big as the black border of the marker.
-        lineWidth = 20
+        # ?? When running the detection on a single marker, the results are best when 
+        # ?? the size of the white margin is at least as big as the black border of the marker.
+        lineWidth = 30
         lineHalfWidth = (lineWidth >> 1) + 0
         #cv2.rectangle(frame, 
         #    (self.arucoX, self.arucoY), 

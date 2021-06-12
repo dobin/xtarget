@@ -18,3 +18,8 @@ class ArurcoTest(unittest.TestCase):
         (corners, ids, rejected) = detector.findAruco()
         self.assertEqual(len(corners), 4)
         self.assertEqual(len(ids), 4)
+        #print("A: {}".format(len(corners)))
+        #print("B: {}".format(len(rejected)))
+
+        #cv2.imshow("A", frame)
+        #cv2.waitKey(0)
