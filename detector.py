@@ -30,6 +30,7 @@ class Detector():
 
         # Mask: Make to grey
         self.mask = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        ##self.mask3 = self.mask.copy()
 
         # Mask: remove small artefacts (helpful for removing some glare, and improving detection)
         if self.doSharpen:
@@ -42,6 +43,8 @@ class Detector():
         # Mask: threshold, throw away all bytes below thresh (bytes)
         _, self.mask = cv2.threshold(self.mask, 255-self.thresh, 255, cv2.THRESH_BINARY)
 
+        ##cv2.imshow("m3", self.mask2)
+        
         # check if there is any change at all
         # if no change, do not attempt to find contours. 
         # this can save processing power
@@ -50,7 +53,7 @@ class Detector():
 
 
     def findAruco(self):
-        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.frame, self.arucoDict, parameters=self.arucoParams)
+        (corners, ids, rejected) = cv2.aruco.detectMarkers(self.mask2, self.arucoDict, parameters=self.arucoParams)
         return (corners, ids, rejected)
 
 

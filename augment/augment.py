@@ -27,7 +27,7 @@ def getWarp(image, source):
     refPts = []
     # loop over the IDs of the ArUco markers in top-left, top-right,
     # bottom-right, and bottom-left order
-    for i in (923, 1001, 241, 1007):
+    for i in (42, 1001, 241, 1007):
         # grab the index of the corner with the current ID and append the
         # corner (x, y)-coordinates to our list of reference points
         j = np.squeeze(np.where(ids == i))

@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import logging
 
+from numpy.lib.arraysetops import isin
+
 from model import OpencvRect
 from gfxutils import imageCopyInto
 
@@ -18,7 +20,7 @@ class Projector():
 
         # what we project
         self.projectorTargetCenterX = 700
-        self.projectorTargetCenterY = 400
+        self.projectorTargetCenterY = 600
         self.projectorTargetRadius = 100
 
         # input from webcam
@@ -43,7 +45,7 @@ class Projector():
         self.arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
         # aruca symbols
         l = self.arucoSymbolSize
-        self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 923, l)
+        self.arucoA = cv2.aruco.drawMarker(self.arucoDict, 42, l)
         self.arucoB = cv2.aruco.drawMarker(self.arucoDict, 1001, l)
         self.arucoC = cv2.aruco.drawMarker(self.arucoDict, 241, l)
         self.arucoD = cv2.aruco.drawMarker(self.arucoDict, 1007, l)
@@ -64,11 +66,11 @@ class Projector():
 
         # aruco
         lineWidth = 10
-        lineHalfWidth = lineWidth >> 1
-        cv2.rectangle(frame, 
-            (self.arucoX, self.arucoY), 
-            (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
-            (0, 255, 0), 1)
+        lineHalfWidth = (lineWidth >> 1) + 4
+        #cv2.rectangle(frame, 
+        #    (self.arucoX, self.arucoY), 
+        #    (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
+        #    (0, 255, 0), 1)
 
         # this is stupid
         # A
@@ -79,7 +81,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth), 
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
-            (255, 255, 255), 10
+            (255, 255, 255), lineWidth
         )
         # B
         imageCopyInto(frame, self.arucoB, 
@@ -89,7 +91,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth), 
             (self.arucoX + self.arucoWidth - self.arucoSymbolSize+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
-            (255, 255, 255), 10
+            (255, 255, 255), lineWidth
         )
         # C
         imageCopyInto(frame, self.arucoC, 
@@ -99,7 +101,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
-            (255, 255, 255), 10
+            (255, 255, 255), lineWidth
         )
         # D
         imageCopyInto(frame, self.arucoD, 
@@ -109,7 +111,7 @@ class Projector():
         cv2.rectangle(frame,
             (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
             (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
-            (255, 255, 255), 10
+            (255, 255, 255), lineWidth
         )
 
 
@@ -127,6 +129,8 @@ class Projector():
 
 
     def setTargetCenter(self, x, y, targetRadius):
+        if x is None or y is None:
+            return
         logger.info("Set target center: " + str(x) + " / " + str(y))
         self.camTargetCenterX = int(x)
         self.camTargetCenterY = int(y)
@@ -139,16 +143,28 @@ class Projector():
 
     def setCamAruco(self, arucoCorners, arucoIds):
         """Set the detected Cam/Video Arucos, and calculate the transformation matrix to us"""
-        if arucoCorners == None or arucoIds == None:
+        if arucoCorners == None:
             return
         ids = arucoIds.flatten()
         refPts = []
+        
+        for i in (42, 1001, 241, 1007):
+            if len(np.where(ids == i)) == 0:
+                print("Not found: {}".format(i))
+                return
+
         # loop over the IDs of the ArUco markers in top-left, top-right,
         # bottom-right, and bottom-left order
-        for i in (923, 1001, 241, 1007):
+        for i in (42, 1001, 241, 1007):
             # grab the index of the corner with the current ID and append the
             # corner (x, y)-coordinates to our list of reference points
             j = np.squeeze(np.where(ids == i))
+
+            print("-> i: {}  j: {}".format(i, j))
+            if isinstance(j, list):
+                print("-> Something went wrong")
+                return
+            
             corner = np.squeeze(arucoCorners[j])
             refPts.append(corner)
 
@@ -174,7 +190,7 @@ class Projector():
 
 
     def handleShot(self, recordedHit):
-        if self.H == None:
+        if self.H is None:
             return
 
         # check if shot hit something

@@ -102,13 +102,25 @@ class Lazer(object):
     def handleAruco(self):
         if self.arucoCorners != None:
             return
+        if self.videoStream.frameNr % 10 != 0:
+            return
+
 
         (corners, ids, rejected) = self.detector.findAruco()
+        for corner in corners:
+            a = (int(corner[0][0][0]), int(corner[0][0][1]))
+            b = (int(corner[0][2][0]), int(corner[0][2][1]))
+            cv2.rectangle(self.frame, 
+                a,
+                b,
+                (0,255,255), 2)
+
         if len(corners) != 4:
+            print("Not enough aruco: {}".format(len(corners)))
             return
         self.arucoCorners = corners
         self.arucoIds = ids
-        logger.info("Found aruco {} {}".format(len(corners), len(ids)))
+        logger.info("Found 4 aruco {} {}".format(len(corners), len(ids)))
 
         self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
 
@@ -135,13 +147,14 @@ class Lazer(object):
                     a,
                     b,
                     (0,255,255), 2)
-            
-            self.projector.drawAruco()
+            else:
+                self.projector.drawAruco()
         elif self.mode == Mode.main:
             self.projector.drawTargetCircle()
 
 
     def handleTarget(self, save=False):
+        return
         if self.targetThresh > 150:
             # give up here
             return
@@ -282,7 +295,8 @@ class Lazer(object):
         # draw
         cv2.imshow('Video', self.frame)
         if self.debug:
-            cv2.imshow('Mask', self.detector.mask)
+            #cv2.imshow('Mask', self.detector.mask)
+            pass
         self.projector.show()
 
 
