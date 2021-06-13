@@ -101,7 +101,7 @@ class QueueInputStream(InputStream):
                 # add the frame to the queue
                 self.Q.put((grabbed, frame))
             else:
-                time.sleep(0.1)  # Rest for 10ms, we have a full queue
+                time.sleep(0.01)  # Rest for 10ms, we have a full queue
 
         self.capture.release()
 
@@ -119,7 +119,7 @@ class QueueInputStream(InputStream):
         # return True if there are still frames in the queue. If stream is not stopped, try to wait a moment
         tries = 0
         while self.Q.qsize() == 0 and not self.stopped and tries < 5:
-            time.sleep(0.1)
+            time.sleep(0.01)
             tries += 1
 
         return self.Q.qsize() > 0
