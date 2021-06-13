@@ -70,20 +70,44 @@ class QueueInputStream(InputStream):
         return self
 
     def update(self):
+        # keep looping infinitely
         while True:
+            # if the thread indicator variable is set, stop the
+            # thread
             if self.stopped:
                 break
 
-            (grabbed, frame) = self.capture.read()
-            if not grabbed:
-                self.stopped = True
-
+            # otherwise, ensure the queue has room in it
             if not self.Q.full():
+                # read the next frame from the file
+                (grabbed, frame) = self.capture.read()
+
+                # if the `grabbed` boolean is `False`, then we have
+                # reached the end of the video file
+                if not grabbed:
+                    self.stopped = True
+
+                # if there are transforms to be done, might as well
+                # do them on producer thread before handing back to
+                # consumer thread. ie. Usually the producer is so far
+                # ahead of consumer that we have time to spare.
+                #
+                # Python is not parallel but the transform operations
+                # are usually OpenCV native so release the GIL.
+                #
+                # Really just trying to avoid spinning up additional
+                # native threads and overheads of additional
+                # producer/consumer queues since this one was generally
+                # idle grabbing frames.
+                if self.transform:
+                    frame = self.transform(frame)
+
+                # add the frame to the queue
                 self.Q.put((grabbed, frame))
             else:
-                self.droppedFramesPS.tack()
-                print("Dropping a frame: " + str(self.droppedFramesPS.get()))
-
+                time.sleep(0.01)  # Rest for 10ms, we have a full queue
+                #self.droppedFramesPS.tack()
+                #print("Dropping a frame: " + str(self.droppedFramesPS.get()))
 
     def read(self):
         # return next frame in the queue

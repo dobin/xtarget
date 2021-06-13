@@ -38,7 +38,7 @@ class VideoStream(object):
         if isTrue and self.crop != None:
             frame = self.doCrop(frame)
 
-        return isTrue, frame
+        return isTrue, frame, self.frameNr
 
 
     def setCrop(self, crop):
@@ -94,12 +94,12 @@ class FileVideoStream(VideoStream):
 
 
     def getFrame(self):
-        isTrue, frame = super().getFrame()
+        isTrue, frame, frameNr = super().getFrame()
         if not isTrue and self.endless:  # if file ends, continue at the beginning 
             self.setFrame(0)  # seamlessly start at the beginning
             return super().getFrame()
 
-        return isTrue, frame
+        return isTrue, frame, frameNr
 
 
     def setFrame(self, frameNr):

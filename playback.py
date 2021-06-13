@@ -92,6 +92,8 @@ class Playback(object):
                 self.lazer.changeMode(Mode.intro)
 
         # only applicable for video files
+        # we take videoStream.frameNr here as it will be only relevant for files
+        # otherwise we would need to use self.lazer.frameNr
         if key == ord('d'): # back
             self.lazer.videoStream.setFrame(self.lazer.videoStream.frameNr-1)
             self.lazer.resetDynamic()

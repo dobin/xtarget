@@ -24,8 +24,10 @@ class Lazer(object):
         self.glareEnabled = False
 
         # static hit options
-        self.hitGraceTime = 30  # How many frames between detections (1s)
+        self.hitGraceTime = 30  # How many frames between detections (~1s)
         self.hitMinRadius = 1.0  # found out by experimentation
+
+        self.frameNr = None
 
         self.resetDynamic()
 
@@ -75,12 +77,12 @@ class Lazer(object):
 
     def nextFrame(self):
         """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
-        isTrue, self.frame = self.videoStream.getFrame()
+        isTrue, self.frame, self.frameNr = self.videoStream.getFrame()
         if not isTrue:  # end of file or stream
             return False
         
         # reset stats if file rewinds
-        if self.videoStream.frameNr == 0:
+        if self.frameNr == 0:
             self.resetDynamic()
 
         self.detector.initFrame(frame=self.frame)
@@ -102,7 +104,7 @@ class Lazer(object):
     def handleAruco(self):
         if self.arucoCorners != None:
             return
-        if self.videoStream.frameNr % 10 != 0:
+        if self.frameNr % 10 != 0:
             return
 
         (corners, ids, rejected) = self.detector.findAruco()
@@ -187,15 +189,16 @@ class Lazer(object):
 
 
     def getHits(self, staticImage=False):
-        if not staticImage:
+        if not staticImage and self.hitLastFoundFrameNr != 0:
             # wait a bit between detections
-            if (self.videoStream.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
+            if (self.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
+                #print("Too many at {} with {}".format(self.frameNr, self.hitLastFoundFrameNr))
                 return []
         
         recordedHits = self.detector.findHits(self.hitMinRadius)
         if len(recordedHits) > 0:
-            self.hitLastFoundFrameNr = self.videoStream.frameNr
-            logger.info("Found hit at frame #" + str(self.videoStream.frameNr) + " with radius " + str(recordedHits[0].radius))
+            self.hitLastFoundFrameNr = self.frameNr
+            logger.info("Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
             self.projector.handleShot(recordedHits[0])
 
         return recordedHits
@@ -244,7 +247,7 @@ class Lazer(object):
             cv2.putText(self.frame, s, (o*1,90), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.debug:
-            s = 'Frame: '+ str(self.videoStream.frameNr)
+            s = 'Frame: '+ str(self.frameNr)
             cv2.putText(self.frame, s, (o*1,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
             s = "Denoise: " + str(self.detector.doDenoise)
             cv2.putText(self.frame, s, ((o*0),60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
@@ -291,7 +294,7 @@ class Lazer(object):
     def saveCurrentFrame(self, recordedHit=None):
         """Save current frame as file"""
         filenameBase = self.videoStream.getFilenameBase()
-        filenameBase += '_'  + str(self.videoStream.frameNr) + '_'
+        filenameBase += '_'  + str(self.frameNr) + '_'
 
         logger.info("Saving current frame:")
         if recordedHit != None:
