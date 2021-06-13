@@ -68,7 +68,7 @@ def main():
             return
         videoStream.setCrop(videoFileConfig['crop'])
 
-        playback = Playback(videoStream, thresh=videoFileConfig['thresh'], saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback(videoStream, withProjector=args.camProjector, thresh=videoFileConfig['thresh'], saveFrames=args.saveFrames, saveHits=args.saveHits)
         playback.init()
         playback.play()
 

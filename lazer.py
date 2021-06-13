@@ -144,7 +144,6 @@ class Lazer(object):
 
 
     def drawAruco(self):
-        self.projector.initFrame()
         if self.threadData['mode'] == Mode.intro:
             if self.arucoCorners != None:
                 # draw aruco area
@@ -154,11 +153,7 @@ class Lazer(object):
                     a,
                     b,
                     (0,255,255), 2)
-            else:
-                self.projector.drawAruco()
-        elif self.threadData['mode'] == Mode.main:
-            self.projector.drawTargetCircle()
-            self.projector.drawHits()
+
 
 
     def handleTarget(self, contours, reliefs, save=False):
@@ -304,7 +299,10 @@ class Lazer(object):
             #cv2.imshow('Mask', self.detector.mask)
             pass
         if self.withProjector:
-            self.projector.show()
+            if self.threadData['mode'] == Mode.intro:
+                self.projector.showAruco()
+            elif self.threadData['mode'] == Mode.main:
+                self.projector.showTarget()
 
 
     def saveCurrentFrame(self, recordedHit=None):

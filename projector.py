@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 class Projector():
     def __init__(self, height=1080, width=1920):
-        self.frameSrc = np.zeros((height,width,3), np.uint8)
-        self.frame = None
         self.recordedHit = None
         self.width = width
         self.height = height
@@ -55,88 +53,38 @@ class Projector():
         self.srcMat = None
         self.dstMat = None
 
-
-    def initFrame(self):
-        self.frame = self.frameSrc.copy()
-        
-
-    def drawAruco(self):
-        """Draw the four Aruco squares we project"""
-        frame = self.frame
-        c = (200, 200, 200)
-
-        # aruco
-        # ?? When running the detection on a single marker, the results are best when 
-        # ?? the size of the white margin is at least as big as the black border of the marker.
-        lineWidth = 30
-        lineHalfWidth = (lineWidth >> 1) + 0
-        #cv2.rectangle(frame, 
-        #    (self.arucoX, self.arucoY), 
-        #    (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
-        #    (0, 255, 0), 1)
-
-        # this is stupid
-        # A
-        imageCopyInto(frame, self.arucoA, 
-            self.arucoX, 
-            self.arucoY
-        )
-        cv2.rectangle(frame,
-            (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth), 
-            (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
-            c, lineWidth
-        )
-        # B
-        imageCopyInto(frame, self.arucoB, 
-            self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
-            self.arucoY
-        )
-        cv2.rectangle(frame,
-            (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth), 
-            (self.arucoX + self.arucoWidth - self.arucoSymbolSize+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
-            c, lineWidth
-        )
-        # C
-        imageCopyInto(frame, self.arucoC, 
-            self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
-            self.arucoY + self.arucoHeight - self.arucoSymbolSize
-        )
-        cv2.rectangle(frame,
-            (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
-            (self.arucoX+self.arucoSymbolSize+lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
-            c, lineWidth
-        )
-        # D
-        imageCopyInto(frame, self.arucoD, 
-            self.arucoX, 
-            self.arucoY + self.arucoHeight - self.arucoSymbolSize
-        )
-        cv2.rectangle(frame,
-            (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
-            (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
-            c, lineWidth
-        )
+        self.frameSrc = np.zeros((height,width,3), np.uint8)
+        self.picAruco = self._getPicAruco()
+        self.picTargetBase = self._getPicTarget()
 
 
-    def drawHits(self):
-        if self.recordedHit is not None:
-            cv2.circle(self.frame, 
-                (self.recordedHit.x, self.recordedHit.y), 20, 
-                self.colorHit, 4)
+    def showTarget(self):
+        cv2.imshow('Projector', self.picTargetBase)
 
 
-    def drawTargetCircle(self):
-        """Draw the actual target circle we project"""
-        frame = self.frame
-        # the actual target circle
-        cv2.circle(frame, 
-            (self.projectorTargetCenterX, self.projectorTargetCenterY), 
-            self.projectorTargetRadius, 
-            self.colorTarget, 10)
+    def showAruco(self):
+        cv2.imshow('Projector', self.picAruco)
 
 
-    def show(self):
-        cv2.imshow('Projector', self.frame)
+    def handleShot(self, recordedHit):
+        if self.H is None:
+            return
+
+        x, y = self.translate(recordedHit.x, recordedHit.y)
+
+        print("Shot at   : {}/{}".format(recordedHit.x, recordedHit.y))
+        print("Shot trans1: {}/{}".format(x, y))
+        print("Shot trans2: {}/{}".format(x+self.arucoX, y+self.arucoY))
+
+        self.recordedHit = RecordedHit()
+        self.recordedHit.x = x+self.arucoX
+        self.recordedHit.y = y+self.arucoY
+        self.recordedHit.radius = recordedHit.radius
+
+        cv2.circle(self.picTargetBase, 
+            (self.recordedHit.x, self.recordedHit.y), 20, 
+            self.colorHit, 4)
+
 
 
     def setTargetCenter(self, x, y, targetRadius):
@@ -200,25 +148,6 @@ class Projector():
         self.dstMat = dstMat
 
 
-    def handleShot(self, recordedHit):
-        if self.H is None:
-            return
-
-        x, y = self.translate(recordedHit.x, recordedHit.y)
-
-        print("Shot at   : {}/{}".format(recordedHit.x, recordedHit.y))
-        print("Shot trans1: {}/{}".format(x, y))
-        print("Shot trans2: {}/{}".format(x+self.arucoX, y+self.arucoY))
-        #cv2.circle(self.frame, 
-        #    (x+self.arucoX, y+self.arucoY), recordedHit.radius, 
-        #    self.colorHit, 4)
-
-        self.recordedHit = RecordedHit()
-        self.recordedHit.x = x+self.arucoX
-        self.recordedHit.y = y+self.arucoY
-        self.recordedHit.radius = recordedHit.radius
-
-
     def translate(self, x, y):
         H_inv = np.linalg.inv(self.H)
         p = np.array((x,y,1)).reshape((3,1))
@@ -227,3 +156,76 @@ class Projector():
         px = int(round(sum[0]/sum[2]))
         py = int(round(sum[1]/sum[2]))
         return px, py
+
+
+    def _getPicTarget(self):
+        """Draw the actual target circle we project"""
+        frame = self.frameSrc.copy()
+
+        # the actual target circle
+        cv2.circle(frame, 
+            (self.projectorTargetCenterX, self.projectorTargetCenterY), 
+            self.projectorTargetRadius, 
+            self.colorTarget, 10)
+
+        return frame
+
+
+    def _getPicAruco(self):
+        """Draw the four Aruco squares we project"""
+        frame = self.frameSrc.copy()
+        c = (200, 200, 200)
+
+        # aruco
+        # ?? When running the detection on a single marker, the results are best when 
+        # ?? the size of the white margin is at least as big as the black border of the marker.
+        lineWidth = 30
+        lineHalfWidth = (lineWidth >> 1) + 0
+        #cv2.rectangle(frame, 
+        #    (self.arucoX, self.arucoY), 
+        #    (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
+        #    (0, 255, 0), 1)
+
+        # this is stupid
+        # A
+        imageCopyInto(frame, self.arucoA, 
+            self.arucoX, 
+            self.arucoY
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth), 
+            (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
+            c, lineWidth
+        )
+        # B
+        imageCopyInto(frame, self.arucoB, 
+            self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
+            self.arucoY
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth), 
+            (self.arucoX + self.arucoWidth - self.arucoSymbolSize+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth),
+            c, lineWidth
+        )
+        # C
+        imageCopyInto(frame, self.arucoC, 
+            self.arucoX + self.arucoWidth - self.arucoSymbolSize, 
+            self.arucoY + self.arucoHeight - self.arucoSymbolSize
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
+            (self.arucoX+self.arucoSymbolSize+lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
+            c, lineWidth
+        )
+        # D
+        imageCopyInto(frame, self.arucoD, 
+            self.arucoX, 
+            self.arucoY + self.arucoHeight - self.arucoSymbolSize
+        )
+        cv2.rectangle(frame,
+            (self.arucoX-lineHalfWidth, self.arucoY-lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize), 
+            (self.arucoX+self.arucoSymbolSize+lineHalfWidth, self.arucoY+self.arucoSymbolSize+lineHalfWidth+ self.arucoHeight - self.arucoSymbolSize),
+            c, lineWidth
+        )
+
+        return frame
