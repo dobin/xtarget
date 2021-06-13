@@ -117,28 +117,28 @@ def testcase(basename):
     videoStream.initFile(filename)
     videoStream.setCrop(videoFileConfig['crop'])
 
-    lazer = Lazer(videoStream, mode=Mode.intro, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
+    lazer = Lazer(videoStream, mode=Mode.main, thresh=videoFileConfig['thresh'], saveFrames=False, saveHits=False)
 
     # get all testcases to check if all triggered
     yamlFilenameList = glob.glob(BASEDIR + basename + "_*.yaml")
     yamlFilenameList = [i.replace('\\', '/') for i in yamlFilenameList]
 
     while True:
-        hasFrame = lazer.nextFrame()
+        hasFrame, data = lazer.nextFrame()
         if not hasFrame:
             break
 
-        recordedHits = lazer.getHits()
+        recordedHits = data['recordedHits']
         if len(recordedHits) > 0:
             recordedHit = recordedHits[0]
-            print("Checking dot in frame " + str(videoStream.frameNr))
-            testHandleHit(recordedHit, basename, videoStream.frameNr, yamlFilenameList)
+            print("Checking dot in frame " + str(lazer.frameNr))
+            testHandleHit(recordedHit, basename, lazer.frameNr, yamlFilenameList)
 
     if len(yamlFilenameList) != 0:
         print("Error: Following dots were not detected: " + str(yamlFilenameList))
     lazer.release()
 
-    return videoStream.frameNr
+    return lazer.frameNr
 
 
 def testHandleHit(recordedHit, filename, frameNr, yamlFilenameList):

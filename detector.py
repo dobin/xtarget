@@ -5,8 +5,8 @@ from gfxutils import *
 from model import *
 
 class Detector():
-    def __init__(self, thresh):
-        self.thresh = thresh
+    def __init__(self, videoStream):
+        self.videoStream = videoStream
 
         # decoding options
         self.doDenoise = True
@@ -25,7 +25,7 @@ class Detector():
         self.mask2 = None
         
 
-    def initFrame(self, frame):
+    def initFrame(self, frame, thresh):
         self.frame = frame
         self.previousMask = self.mask
 
@@ -43,7 +43,7 @@ class Detector():
         #self.mask2 = self.mask.copy()
         self.mask2 = m
         # Mask: threshold, throw away all bytes below thresh (bytes)
-        _, self.mask = cv2.threshold(m, 255-self.thresh, 255, cv2.THRESH_BINARY)
+        _, self.mask = cv2.threshold(m, 255-thresh, 255, cv2.THRESH_BINARY)
 
         ##cv2.imshow("m3", self.mask2)
         

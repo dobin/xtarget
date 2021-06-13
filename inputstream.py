@@ -1,4 +1,3 @@
-# import the necessary packages
 from threading import Thread
 import sys
 import cv2

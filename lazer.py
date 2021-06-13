@@ -4,7 +4,7 @@ import logging
 
 from gfxutils import *
 from model import *
-from detector import Detector
+from detectorthread import DetectorThread
 from projector import Projector
 
 logger = logging.getLogger(__name__)
@@ -14,22 +14,29 @@ class Lazer(object):
     """Manages detection via Detector on VideoStream"""
 
     def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
-        self.videoStream = videoStream
         self.saveFrames = saveFrames
         self.saveHits = saveHits
-        self.mode = mode
-        self.detector = Detector(thresh=thresh)
+        self.detectorThread = DetectorThread(videoStream)
         self.projector = Projector()
+
         self.debug = True
-        self.glareEnabled = False
+        self.frameNr = None
+        self.glareEnabled = False  # TODO
 
         # static hit options
         self.hitGraceTime = 30  # How many frames between detections (~1s)
         self.hitMinRadius = 1.0  # found out by experimentation
 
-        self.frameNr = None
-
         self.resetDynamic()
+
+        # read/written by Lazer
+        # only read by DetectorThread
+        self.threadData = {
+            'mode': mode,
+            'thresh': thresh,
+            'targetThresh': 60,  # going up, looked good with testing
+        }
+        self.detectorThread.startThread(self.threadData)
 
 
     def resetDynamic(self):
@@ -40,8 +47,7 @@ class Lazer(object):
         self.hits = []
         self.hitLastFoundFrameNr = 0  # Track when last hit was found
 
-       # data for identified target
-        self.targetThresh = 60  # hopyfully sane initial value, going up
+        # data for identified target
         self.targetCenterX = None
         self.targetCenterY = None
         self.targetRadius = None
@@ -52,14 +58,26 @@ class Lazer(object):
         self.arucoIds = None
 
 
+    def addThresh(self, thresh):
+        self.threadData['thresh'] += thresh
+
+
+    def getThresh(self):
+        return self.threadData['thresh']
+
+
     def changeMode(self, mode):
-        self.mode = mode
-        self.detector.mode = mode
-        if self.mode == Mode.main:
+        self.threadData['mode'] = mode
+        print("new mode: " + str(self.threadData['mode']))
+        if mode == Mode.main:
             self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
             self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
-        elif self.mode == Mode.intro:
+        elif mode == Mode.intro:
             self.resetDynamic()
+
+
+    def getMode(self):
+        return self.threadData['mode']
 
 
     def getDistanceToCenter(self, x, y):
@@ -77,37 +95,32 @@ class Lazer(object):
 
     def nextFrame(self):
         """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
-        isTrue, self.frame, self.frameNr = self.videoStream.getFrame()
+        isTrue, self.frame, self.frameNr, mode, data = self.detectorThread.Q.get()
         if not isTrue:  # end of file or stream
-            return False
-        
+            return False, None
+
         # reset stats if file rewinds
         if self.frameNr == 0:
             self.resetDynamic()
 
-        self.detector.initFrame(frame=self.frame)
-        if self.mode == Mode.intro:
-            self.handleGlare()  # mask
-            self.handleTarget()  # mask2
-            self.handleAruco()  # mask2
-        elif self.mode == Mode.main:
-            recordedHits = self.getHits()
-            self.drawHits(recordedHits)
+        if mode == Mode.intro:
+            self.handleGlare(data['glare'])
+            self.handleTarget(data['targetContours'], data['targetReliefs'])
+            self.handleAruco(data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
+        elif mode == Mode.main:
+            data['recordedHits'] = self.handleHits(data['recordedHits'])
 
         # if we wanna record everything
         if self.saveFrames:
             self.saveCurrentFrame()
 
-        return True
+        return True, data
 
 
-    def handleAruco(self):
+    def handleAruco(self, corners, ids, rejected):
         if self.arucoCorners != None:
             return
-        if self.frameNr % 10 != 0:
-            return
 
-        (corners, ids, rejected) = self.detector.findAruco()
         for corner in corners:
             a = (int(corner[0][0][0]), int(corner[0][0][1]))
             b = (int(corner[0][2][0]), int(corner[0][2][1]))
@@ -127,7 +140,7 @@ class Lazer(object):
 
     def drawAruco(self):
         self.projector.initFrame()
-        if self.mode == Mode.intro:
+        if self.threadData['mode'] == Mode.intro:
             if self.arucoCorners != None:
                 # draw aruco area
                 a = (int(self.arucoCorners[3][0][0][0]), int(self.arucoCorners[3][0][0][1]))
@@ -138,14 +151,14 @@ class Lazer(object):
                     (0,255,255), 2)
             else:
                 self.projector.drawAruco()
-        elif self.mode == Mode.main:
+        elif self.threadData['mode'] == Mode.main:
             self.projector.drawTargetCircle()
             self.projector.drawHits()
 
 
-    def handleTarget(self, save=False):
+    def handleTarget(self, contours, reliefs, save=False):
         return
-        if self.targetThresh > 150:
+        if self.threadData['targetThresh'] > 150:
             # give up here
             return
         if self.targetCenterX != None:
@@ -153,16 +166,15 @@ class Lazer(object):
         if self.noAutoTarget:
             return
 
-        contours, reliefs = self.detector.findTargets(self.targetThresh)
         for relief in reliefs:
             cv2.circle(self.frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
             for c in contours:
                 cv2.drawContours(self.frame, [c], -1, (0, 255, 0), 2)
 
         if len(reliefs) == 0:
-            self.targetThresh += 1
+            self.threadData['targetThresh'] += 1
         else:
-            print("Auto Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
+            print("Auto Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.threadData['targetThresh']))
             self.targetCenterX = reliefs[0].centerX
             self.targetCenterY = reliefs[0].centerY
             self.targetRadius = int(reliefs[0].w / 2)
@@ -172,10 +184,10 @@ class Lazer(object):
         cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
 
 
-    def handleGlare(self):
+    def handleGlare(self, glare):
         if not self.glareEnabled:
             return
-        glare = self.detector.findGlare()
+
         for rect in glare:
             cv2.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
 
@@ -188,25 +200,19 @@ class Lazer(object):
         self.glareMeterAvg = int(self.glareMeterAvg + self.glareMeter) >> 1
 
 
-    def getHits(self, staticImage=False):
+    def handleHits(self, recordedHits, staticImage=False):
         if not staticImage and self.hitLastFoundFrameNr != 0:
             # wait a bit between detections
             if (self.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
-                #print("Too many at {} with {}".format(self.frameNr, self.hitLastFoundFrameNr))
                 return []
         
-        recordedHits = self.detector.findHits(self.hitMinRadius)
         if len(recordedHits) > 0:
             self.hitLastFoundFrameNr = self.frameNr
             logger.info("Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
             self.projector.handleShot(recordedHits[0])
 
-        return recordedHits
-
-
-    def drawHits(self, recordedHits):
+        # draw
         for recordedHit in recordedHits:
-            # draw
             cv2.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
             cv2.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
 
@@ -222,6 +228,8 @@ class Lazer(object):
             if self.saveHits:
                 self.saveCurrentFrame(recordedHit)
 
+        return recordedHits
+
 
     def displayFrame(self):
         """Displays the current frame in the window, with UI data written on it"""
@@ -234,25 +242,25 @@ class Lazer(object):
         # UI
         o = 300
         color = (255, 255, 255)
-        s= "Tresh: " + str(self.detector.thresh)
+        s= "Tresh: " + str(self.getThresh())
         cv2.putText(self.frame, s, (o*0,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.glareMeterAvg > 0:
             cv2.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv2.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
 
-        s = "Mode: " + str(self.mode.name)
+        s = "Mode: " + str(self.threadData['mode'].name)
         cv2.putText(self.frame, s, (o*0,90), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-        if self.videoStream.fps.get() < 28:
-            s = "FPS: " + str(self.videoStream.fps.get())
+        if self.detectorThread.videoStream.fps.get() < 28:
+            s = "FPS: " + str(self.detectorThread.videoStream.fps.get())
             cv2.putText(self.frame, s, (o*1,90), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.debug:
             s = 'Frame: '+ str(self.frameNr)
             cv2.putText(self.frame, s, (o*1,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            s = "Denoise: " + str(self.detector.doDenoise)
-            cv2.putText(self.frame, s, ((o*0),60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            s = "Sharpen: " + str(self.detector.doSharpen)
-            cv2.putText(self.frame, s, (o*1,60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            #s = "Denoise: " + str(self.detector.doDenoise)
+            #cv2.putText(self.frame, s, ((o*0),60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+            #s = "Sharpen: " + str(self.detector.doSharpen)
+            #cv2.putText(self.frame, s, (o*1,60), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
             s = "Target: {}/{} {}".format(self.targetCenterX, self.targetCenterY, self.targetRadius)
             cv2.putText(self.frame, s, (o*1,120), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
@@ -276,12 +284,12 @@ class Lazer(object):
             cv2.circle(self.frame, (hit.x, hit.y), 10, color, -1)
 
         color = (0, 0, 255)
-        if self.mode == Mode.intro:
+        if self.threadData['mode'] == Mode.intro:
             s = "Press SPACE to start"
-            cv2.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
-        elif self.mode == Mode.main:
+            cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+        elif self.threadData['mode'] == Mode.main:
             s = "Press SPACE to stop"
-            cv2.putText(self.frame, s, ((self.videoStream.width >> 1) - 60,self.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+            cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
         # draw
         cv2.imshow('Video', self.frame)
@@ -314,4 +322,4 @@ class Lazer(object):
 
 
     def release(self):
-        self.videoStream.release()
+        self.detectorThread.shutdownThread()

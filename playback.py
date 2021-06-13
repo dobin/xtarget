@@ -86,9 +86,9 @@ class Playback(object):
                 self.lazer.setTargetCenter(self.trackerLocA[0], self.trackerLocA[1], self.hitRadius)
 
         if key == ord(' '):  # Mode
-            if self.lazer.mode == Mode.intro:
+            if self.lazer.getMode() == Mode.intro:
                 self.lazer.changeMode(Mode.main)
-            elif self.lazer.mode == Mode.main:
+            elif self.lazer.getMode() == Mode.main:
                 self.lazer.changeMode(Mode.intro)
 
         # only applicable for video files
@@ -116,11 +116,11 @@ class Playback(object):
         if key == ord('j'):  # decrease threshhold
             if self.isPaused:
                 self.lazer.setFrame(self.lazer.videoStream.frameNr)
-            self.lazer.detector.thresh -= 1
+            self.lazer.addThresh(-1)
         if key == ord('k'):  # increase threshhold
             if self.isPaused:
                 self.lazer.setFrame(self.lazer.videoStream.frameNr)
-            self.lazer.detector.thresh += 1
+            self.lazer.addThresh(1)
 
 
     def handleCurses(self):
