@@ -40,6 +40,7 @@ def main():
     ap.add_argument("--video", help="Play a video file")
     ap.add_argument("--image", help="Play a image")
     ap.add_argument("--cam", help="Capture from webcam id (starting at 0)")
+    ap.add_argument("--camProjector", help="Cam: Use projector (with Aruco)", action='store_true')
     ap.add_argument("--test", help="Perform analysis of test-videos and validate (slow)", action='store_true')
     ap.add_argument("--testQuick", help="Perform analysis of test-pics and validate (fast)", action='store_true')
 
@@ -80,7 +81,7 @@ def main():
             resolution={'width': args.width, 'height': args.height}
 
         videoStream.initCam(camId, resolution=resolution)
-        playback = Playback(videoStream, saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback(videoStream, withProjector=args.camProjector, saveFrames=args.saveFrames, saveHits=args.saveHits)
         playback.init()
         playback.play()
 
