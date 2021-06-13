@@ -13,10 +13,12 @@ logger = logging.getLogger(__name__)
 class Lazer(object):
     """Manages detection via Detector on VideoStream"""
 
-    def __init__(self, videoStream, thresh=14, saveFrames=False, saveHits=False, mode=Mode.main):
+    def __init__(self, videoStream, thresh=14, withProjector=False, saveFrames=False, saveHits=False, mode=Mode.main):
         self.saveFrames = saveFrames
         self.saveHits = saveHits
         self.detectorThread = DetectorThread(videoStream)
+        self.projector = None
+        self.withProjector = withProjector
         self.projector = Projector()
 
         self.debug = True
@@ -70,8 +72,9 @@ class Lazer(object):
         self.threadData['mode'] = mode
         print("new mode: " + str(self.threadData['mode']))
         if mode == Mode.main:
-            self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
-            self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
+            if self.withProjector:
+                self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
+                self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
         elif mode == Mode.intro:
             self.resetDynamic()
 
@@ -119,6 +122,8 @@ class Lazer(object):
 
     def handleAruco(self, corners, ids, rejected):
         if self.arucoCorners != None:
+            return
+        if not self.withProjector:
             return
 
         for corner in corners:
@@ -209,7 +214,8 @@ class Lazer(object):
         if len(recordedHits) > 0:
             self.hitLastFoundFrameNr = self.frameNr
             logger.info("Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
-            self.projector.handleShot(recordedHits[0])
+            if self.withProjector:
+                self.projector.handleShot(recordedHits[0])
 
         # draw
         for recordedHit in recordedHits:
@@ -237,7 +243,8 @@ class Lazer(object):
         # Stuff we found out
         if self.targetCenterX != None:
             self.drawTarget()
-        self.drawAruco()
+        if self.withProjector:
+            self.drawAruco()
 
         # UI
         o = 300
@@ -296,7 +303,8 @@ class Lazer(object):
         if self.debug:
             #cv2.imshow('Mask', self.detector.mask)
             pass
-        self.projector.show()
+        if self.withProjector:
+            self.projector.show()
 
 
     def saveCurrentFrame(self, recordedHit=None):
