@@ -104,6 +104,7 @@ class FileVideoStream(VideoStream):
 
     def setFrame(self, frameNr):
         if self.threaded:  # not implemented for now
+            logging.warn("SetFrame on threaded videostream?")
             return
 
         self.inputStream.capture.set(cv2.CAP_PROP_POS_FRAMES, frameNr)

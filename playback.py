@@ -45,18 +45,19 @@ class Playback(object):
 
     def play(self):
         """Play the video/cam source from self.videoStream with hit detection as a window in a endless loop"""
+        pauseBreak = False
+        key = None
         while True:
-            self.lazer.nextFrame()  # gets next frame, and creates mask
-            self.drawTrackings()  # local trackings. needs to be before displayFrame
-            self.lazer.displayFrame()  # draw ui n stuff
+            if not self.isPaused or pauseBreak:
+                self.lazer.nextFrame()  # gets next frame and does detections
+                self.drawTrackings()  # local trackings. needs to be before displayFrame
+                self.lazer.displayFrame()  # draw frames, ui n stuff
+                pauseBreak = False
 
-            # input
-            self.handleCurses()  # curses is optional
-            if self.isPaused:
-                key = cv2.waitKey(0)  # wait forever as pause
-            else:
-                key = cv2.waitKey(2)
-            self.handleKey(key)
+            # self.handleCurses()  # curses is optional
+            key = cv2.waitKey(1)
+            pauseBreak = self.handleKey(key)
+
             if key == ord('q'):  # quit
                 break
 
@@ -70,6 +71,8 @@ class Playback(object):
 
     def handleKey(self, key):
         """Handle input keys by invoking their appropriate actions"""
+        ret = False
+
         if key == ord('c'):  # Crop selection mode
             self.cropModeEnabled = not self.cropModeEnabled
             if not self.cropModeEnabled and self.trackerLocB != None:
@@ -95,14 +98,16 @@ class Playback(object):
         # we take videoStream.frameNr here as it will be only relevant for files
         # otherwise we would need to use self.lazer.frameNr
         if key == ord('d'): # back
-            self.lazer.videoStream.setFrame(self.lazer.videoStream.frameNr-1)
+            self.lazer.setFrameRel(-1)
             self.lazer.resetDynamic()
+            ret = True
         elif key == ord('e'): # back 10
-            self.lazer.videoStream.setFrame(self.lazer.videoStream.frameNr-11)
+            self.lazer.setFrameRel(-11)
             self.lazer.resetDynamic()
+            ret = True
         elif key == ord('f'): # forward
-            #lazer.nextFrame()
-            pass
+            self.lazer.setFrameRel(1)
+            ret = True
         elif key == ord('p'):  # pause
             self.isPaused = not self.isPaused
             self.lazer.resetDynamic()
@@ -110,18 +115,13 @@ class Playback(object):
         # Note: when we press a key in paused mode, we actually go to the next 
         # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
         if key == ord('s'):  # save frame
-            if self.isPaused:
-                self.lazer.setFrame(self.lazer.videoStream.frameNr)
             self.lazer.saveCurrentFrame(epilog=".live")
         if key == ord('j'):  # decrease threshhold
-            if self.isPaused:
-                self.lazer.setFrame(self.lazer.videoStream.frameNr)
             self.lazer.addThresh(-1)
         if key == ord('k'):  # increase threshhold
-            if self.isPaused:
-                self.lazer.setFrame(self.lazer.videoStream.frameNr)
             self.lazer.addThresh(1)
 
+        return ret
 
     def handleCurses(self):
         if not self.cursesEnabled:

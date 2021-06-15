@@ -21,9 +21,12 @@ class Lazer(object):
         self.withProjector = withProjector
         self.projector = Projector()
 
-        self.debug = True
+        # set every iteration via nextFrame()
+        self.frame = None
         self.frameNr = None
-        self.glareEnabled = False  # TODO
+
+        self.debug = True
+        self.glareEnabled = True
 
         # static hit options
         self.hitGraceTime = 30  # How many frames between detections (~1s)
@@ -34,9 +37,10 @@ class Lazer(object):
         # read/written by Lazer
         # only read by DetectorThread
         self.threadData = {
-            'mode': mode,
-            'thresh': thresh,
+            'mode': mode,  # model.Mode
+            'thresh': thresh,  # threshold for mask in bit
             'targetThresh': 60,  # going up, looked good with testing
+            'crop': None,  # when input image from the webcam should be cropped
         }
         self.detectorThread.startThread(self.threadData)
 
@@ -58,6 +62,15 @@ class Lazer(object):
         # data for aruco
         self.arucoCorners = None
         self.arucoIds = None
+
+
+    def setFrameRel(self, frameOffset):
+        print("Lazer: Set Frame rel: {} @ {}".format(frameOffset, self.frameNr))
+        self.detectorThread.setFrameNr(self.frameNr + frameOffset)
+
+
+    def setCrop(self, crop):
+        self.threadData['crop'] = crop
 
 
     def addThresh(self, thresh):
@@ -98,7 +111,7 @@ class Lazer(object):
 
     def nextFrame(self):
         """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
-        isTrue, self.frame, self.frameNr, mode, data = self.detectorThread.Q.get()
+        isTrue, self.frame, self.frameNr, mode, data = self.detectorThread.getFrameData()
         if not isTrue:  # end of file or stream
             return False, None
 
