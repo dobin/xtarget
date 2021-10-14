@@ -6,6 +6,7 @@ from gfxutils import *
 from model import *
 from detectorthread import DetectorThread
 from projector import Projector
+from gamemode import GameMode
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class Lazer(object):
         self.projector = None
         self.withProjector = withProjector
         self.projector = Projector()
+        self.gameMode = GameMode()
 
         # set every iteration via nextFrame()
         self.frame = None
@@ -85,10 +87,12 @@ class Lazer(object):
         self.threadData['mode'] = mode
         print("new mode: " + str(self.threadData['mode']))
         if mode == Mode.main:
+            self.gameMode.start()
             if self.withProjector:
                 self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
                 self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
         elif mode == Mode.intro:
+            self.gameMode.stop()
             self.resetDynamic()
 
 
@@ -125,6 +129,8 @@ class Lazer(object):
             self.handleAruco(data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
         elif mode == Mode.main:
             data['recordedHits'] = self.handleHits(data['recordedHits'])
+
+        self.gameMode.nextFrame(self.frameNr)
 
         # if we wanna record everything
         if self.saveFrames:
@@ -214,22 +220,24 @@ class Lazer(object):
 
 
     def handleHits(self, recordedHits, staticImage=False):
+        """Check if new hits have been detected in the frame"""
         if not staticImage and self.hitLastFoundFrameNr != 0:
             # wait a bit between detections
             if (self.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
                 return []
+
+        if len(recordedHits) == 0:
+            return
+
+        # for some things, we dont care how many we detected, just that we detected at least one
+        logger.info("Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
+        self.hitLastFoundFrameNr = self.frameNr
         
-        if len(recordedHits) > 0:
-            self.hitLastFoundFrameNr = self.frameNr
-            logger.info("Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
-            if self.withProjector:
-                self.projector.handleShot(recordedHits[0])
+        if self.withProjector:
+            self.projector.handleShot(recordedHits[0])
 
-        # draw
+        # should only be one
         for recordedHit in recordedHits:
-            cv2.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
-            cv2.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
-
             # check if we have a target (to measure distance to)
             if self.targetRadius != None:
                 p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
@@ -237,23 +245,18 @@ class Lazer(object):
                 d = int(p/r * 100)
                 recordedHit.distance = d
 
+            recordedHit.time = self.gameMode.reset()
             self.hits.append(recordedHit)
 
             if self.saveHits:
+                # draw
+                cv2.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
+                cv2.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
                 self.saveCurrentFrame(recordedHit)
 
         return recordedHits
 
-
-    def displayFrame(self):
-        """Displays the current frame in the window, with UI data written on it"""
-
-        # Stuff we found out
-        if self.targetCenterX != None:
-            self.drawTarget()
-        if self.withProjector:
-            self.drawAruco()
-
+    def drawUi(self):
         # UI
         o = 300
         color = (255, 255, 255)
@@ -280,11 +283,14 @@ class Lazer(object):
             s = "Target: {}/{} {}".format(self.targetCenterX, self.targetCenterY, self.targetRadius)
             cv2.putText(self.frame, s, (o*1,120), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
+
+    def drawHits(self):
         for idx, hit in enumerate(self.hits): 
             if hit.distance > 0:
-                s = str(idx) + " distance: " + str(hit.distance) + " (r:" + str(hit.radius) + ")"
+                s = str(idx) + " distance: " + str(hit.distance) + " (r:" + str(hit.radius) + " t: " + str(hit.time) + ")"
             else:
-                s = str(idx) + " (r:" + str(hit.radius) + ")"
+                s = str(idx) + " (r:" + str(hit.radius) + " t: " + str(hit.time) + ")"
+
             if idx == 0:
                 color = (0, 200, 0)
             elif idx == 1:
@@ -298,6 +304,25 @@ class Lazer(object):
             cv2.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
             cv2.circle(self.frame, (hit.x, hit.y), 10, color, -1)
 
+    def drawGameMode(self):
+        if not self.gameMode.isShowStart():
+            return
+
+        color = (0, 100, 240)
+        cv2.putText(self.frame, "Shoot!", (500,440), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
+
+
+    def displayFrame(self):
+        """Displays the current frame in the window, with UI data written on it"""
+
+        if self.targetCenterX != None:
+            self.drawTarget()
+        if self.withProjector:
+            self.drawAruco()
+        self.drawUi()
+        self.drawHits()
+        self.drawGameMode()
+
         color = (0, 0, 255)
         if self.threadData['mode'] == Mode.intro:
             s = "Press SPACE to start"
@@ -306,7 +331,8 @@ class Lazer(object):
             s = "Press SPACE to stop"
             cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
 
-        # draw
+
+
         cv2.imshow('Video', self.frame)
         if self.debug:
             #cv2.imshow('Mask', self.detector.mask)

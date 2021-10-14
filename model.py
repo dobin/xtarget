@@ -8,13 +8,15 @@ class RecordedHit(object):
         self.radius = 0
 
         self.distance = 0
+        self.time = 0
 
     def toDict(self):
         me = {
             'center': self.center,
             'x': self.x,
             'y': self.y,
-            'radius': self.radius
+            'radius': self.radius,
+            'time': self.time,
         }
         return me
 
