@@ -6,7 +6,8 @@ logger = logging.getLogger(__name__)
 
 class PluginGlare(object):
     def __init__(self):
-        self.init()
+        self.glareMeter = 0
+        self.glareMeterAvg = 0
 
 
     def init(self):

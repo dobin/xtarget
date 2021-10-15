@@ -6,7 +6,8 @@ logger = logging.getLogger(__name__)
 
 class PluginHits(object):
     def __init__(self):
-        self.init()
+        self.hitLastFoundFrameNr = 0  # Track when last hit was found
+        self.hitGraceTime = 30  # How many frames between detections (~1s)
 
     def init(self):
         self.hitLastFoundFrameNr = 0  # Track when last hit was found
