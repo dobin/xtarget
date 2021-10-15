@@ -18,8 +18,9 @@ class Playback(object):
         """Call init() before use"""
         self.videoStream = videoStream
         self.cursesEnabled = cursesEnabled
-        self.lazer = Lazer(videoStream, withProjector=withProjector, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro)
-        
+        self.lazer = Lazer(
+            videoStream, withProjector=withProjector, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro)
+
         self.cursesUi = None
         self.isPaused = False
         self.cropModeEnabled = False
@@ -42,7 +43,7 @@ class Playback(object):
         if self.cursesEnabled:
             self.cursesUi = CursesUi()
             self.cursesUi.initCurses()
-            
+
         cv2.namedWindow('Video')
         cv2.setMouseCallback("Video", self.clickTrack)
 
@@ -81,7 +82,7 @@ class Playback(object):
             self.cropModeEnabled = not self.cropModeEnabled
             if not self.cropModeEnabled and self.trackerLocB is not None:
                 # exited crop mode, set the resulting crop
-                crop = [ 
+                crop = [
                     self.trackerLocA,
                     self.trackerLocB,
                 ]
@@ -116,7 +117,7 @@ class Playback(object):
             self.isPaused = not self.isPaused
             self.lazer.resetDynamic()
 
-        # Note: when we press a key in paused mode, we actually go to the next 
+        # Note: when we press a key in paused mode, we actually go to the next
         # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
         if key == ord('s'):  # save frame
             self.lazer.saveCurrentFrame(epilog=".live")

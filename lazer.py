@@ -190,7 +190,7 @@ class Lazer(object):
                 cv2.FONT_HERSHEY_TRIPLEX,
                 1.0,
                 color,
-                2)        
+                2)
         elif self.threadData['mode'] == Mode.main:
             s = "Press SPACE to stop"
             cv2.putText(
@@ -250,7 +250,7 @@ class Lazer(object):
         logger.info("  Save Frame to: " + fname)
         cv2.imwrite(fname, self.frame)
 
-        fname = filenameBase + 'mask.jpg' 
+        fname = filenameBase + 'mask.jpg'
         logger.info("  Save Mask to : " + fname)
         cv2.imwrite(fname, self.mask)
 

@@ -1,11 +1,10 @@
-import time
 import logging
 
 from detector import Detector
 from threading import Thread
 from queue import Queue
 
-from model import *
+from model import Mode
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ class DetectorThread():
             return self.Q.get()
         else:
             return self._getFrame(self.threadData)
-    
+
 
     def update(self, threadData):
         """Thread: Main endless loop"""
@@ -92,4 +91,3 @@ class DetectorThread():
                 'recordedHits': recordedHits,
             }
             return((isTrue, frame, frameNr, Mode.main, data))
-

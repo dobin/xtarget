@@ -1,4 +1,3 @@
-from math import e
 import cv2
 import os
 import logging
@@ -24,7 +23,7 @@ class VideoStream(object):
         self.fps = Fps()
         if threaded:
             logger.info("Using threads")
-        
+
 
     def getFilenameBase(self):
         return os.path.splitext(self.filename)[0]
@@ -35,7 +34,7 @@ class VideoStream(object):
         self.frameNr += 1
 
         isTrue, frame = self.inputStream.read()
-        if isTrue and self.crop != None:
+        if isTrue and self.crop is not None:
             frame = self.doCrop(frame)
 
         return isTrue, frame, self.frameNr
@@ -46,7 +45,7 @@ class VideoStream(object):
 
 
     def doCrop(self, frame):
-        if self.crop == None:
+        if self.crop is None:
             return
 
         x1 = self.crop[0][0]
@@ -87,15 +86,15 @@ class FileVideoStream(VideoStream):
             self.inputStream = SimpleInputStream(filename)
             self.inputStream.initStream()
 
-        self.width = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_WIDTH ))
-        self.height = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_HEIGHT ))
+        self.width = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         return True
 
 
     def getFrame(self):
         isTrue, frame, frameNr = super().getFrame()
-        if not isTrue and self.endless:  # if file ends, continue at the beginning 
+        if not isTrue and self.endless:  # if file ends, continue at the beginning
             self.setFrame(0)  # seamlessly start at the beginning
             return super().getFrame()
 
@@ -108,7 +107,7 @@ class FileVideoStream(VideoStream):
             return
 
         self.inputStream.capture.set(cv2.CAP_PROP_POS_FRAMES, frameNr)
-        self.frameNr = frameNr-1
+        self.frameNr = frameNr - 1
 
 
 class CamVideoStream(VideoStream):
@@ -126,15 +125,15 @@ class CamVideoStream(VideoStream):
         if self.threaded:
             self.inputStream = QueueInputStream(camId)
             self.inputStream.initStream()
-            self.inputStream.capture.set(3,resolution['width'])
-            self.inputStream.capture.set(4,resolution['height'])
+            self.inputStream.capture.set(3, resolution['width'])
+            self.inputStream.capture.set(4, resolution['height'])
             self.inputStream.start()  # start the reader thread
         else:
             self.inputStream = SimpleInputStream(camId)
             self.inputStream.initStream()
 
-            self.inputStream.capture.set(3,resolution['width'])
-            self.inputStream.capture.set(4,resolution['height'])
+            self.inputStream.capture.set(3, resolution['width'])
+            self.inputStream.capture.set(4, resolution['height'])
 
         #self.width = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_WIDTH ))
         #self.height = int(self.inputStream.capture.get(cv2.CAP_PROP_FRAME_HEIGHT ))
@@ -151,7 +150,7 @@ class CamVideoStream(VideoStream):
         if camConfig.thresh != self.thresh:
             logger.info("Update Thresh: " + str(camConfig.thresh))
             self.thresh = camConfig.thresh
-            
+
         if camConfig.exposure != self.exposure:
             logger.info("Update exposure: " + str(camConfig.exposure))
             self.exposure = camConfig.exposure

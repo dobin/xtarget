@@ -1,5 +1,5 @@
 from gfxutils import getTime
-import time
+
 
 class Fps(object):
     def __init__(self):
@@ -28,5 +28,4 @@ class Fps(object):
         if avg == 0:
             return 0
         else:
-            return int(1/avg)
-
+            return int(1 / avg)

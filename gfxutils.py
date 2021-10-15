@@ -7,23 +7,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def getTime():
     return time.time()
     #returm time.process_time()
     #return time.clock()
 
-def frameIdentical(image1, image2):
-    return image1.shape == image2.shape and not(np.bitwise_xor(image1,image2).any())
 
-def calculateDistance(x1,y1,x2,y2):
+def frameIdentical(image1, image2):
+    return image1.shape == image2.shape and not(np.bitwise_xor(image1, image2).any())
+
+
+def calculateDistance(x1, y1, x2, y2):
     dist = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
     return dist
 
 
 def imageCopyInto(l_img, s_img, x_offset, y_offset):
-    l_img[y_offset:y_offset+s_img.shape[0], x_offset:x_offset+s_img.shape[1], 0] = s_img
-    l_img[y_offset:y_offset+s_img.shape[0], x_offset:x_offset+s_img.shape[1], 1] = s_img
-    l_img[y_offset:y_offset+s_img.shape[0], x_offset:x_offset+s_img.shape[1], 2] = s_img
+    l_img[y_offset:y_offset + s_img.shape[0], x_offset:x_offset + s_img.shape[1], 0] = s_img
+    l_img[y_offset:y_offset + s_img.shape[0], x_offset:x_offset + s_img.shape[1], 1] = s_img
+    l_img[y_offset:y_offset + s_img.shape[0], x_offset:x_offset + s_img.shape[1], 2] = s_img
 
     #l_img[100:200, 100:200, 2] = s_img
 
@@ -38,7 +41,7 @@ def readVideoFileConfig(filename):
     }
 
     # check for crop settings for file
-    vidYaml = filename +'.yaml'
+    vidYaml = filename + '.yaml'
     if os.path.isfile(vidYaml):
         logger.info("Opening video config file: " + vidYaml)
         with open(vidYaml) as file:

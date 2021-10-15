@@ -1,9 +1,9 @@
 from threading import Thread
-import sys
 import cv2
 import time
 from queue import Queue
 from fps import Fps
+
 
 class InputStream():
     def __init__(self, path):
@@ -38,7 +38,7 @@ class InputStream():
 class SimpleInputStream(InputStream):
     def __init__(self, path):
         super().__init__(path)
-    
+
     def read(self):
         return self.capture.read()
 
