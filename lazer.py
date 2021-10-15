@@ -81,6 +81,7 @@ class Lazer(object):
                 self.pluginGlare.handle(self.frame, data['glare'])
             if self.targetEnabled:
                 self.pluginTarget.handle(self.frame, data['targetContours'], data['targetReliefs'])
+                self.threadData["targetThresh"] = self.pluginTarget.targetThresh
             if self.withProjector:
                 arucoCorners, arucoIds = self.pluginAruco.handle(self.frame, data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
                 if arucoCorners is not None:
