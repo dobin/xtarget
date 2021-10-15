@@ -29,7 +29,7 @@ class Lazer(object):
 
         self.debug = True
         self.glareEnabled = True
-        self.targetEnabled = False
+        self.targetEnabled = True
 
         self.pluginHits = PluginHits()
         self.pluginGlare = PluginGlare()
@@ -115,7 +115,8 @@ class Lazer(object):
 
     def displayFrame(self):
         """Displays the current frame in the window, with UI data written on it"""
-        self.pluginTarget.draw(self.frame)
+        if self.targetEnabled:
+            self.pluginTarget.draw(self.frame)
         if self.withProjector and self.mode == Mode.intro:
             self.pluginAruco.draw(self.frame)
         self.drawUi()
@@ -137,6 +138,7 @@ class Lazer(object):
         self.threadData['mode'] = mode
         print("new mode: " + str(self.threadData['mode']))
         if mode == Mode.main:
+            self.pluginTarget.useCurrentTarget()
             self.gameMode.start()
             if self.withProjector:
                 self.projector.setTargetCenter(
@@ -151,7 +153,7 @@ class Lazer(object):
         # UI
         o = 300
         color = (255, 255, 255)
-        s = "Tresh: " + str(self.getThresh())
+        s = "Tresh: " + str(self.getThresh()) + " / " + str(self.pluginTarget.targetThresh)
         cv2.putText(self.frame, s, (o * 0, 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.pluginGlare.glareMeterAvg > 0:

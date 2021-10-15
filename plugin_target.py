@@ -12,7 +12,9 @@ class PluginTarget(object):
         self.targetRadius = None
 
         self.noAutoTarget = False
-        self.targetThresh = 60
+        self.targetThreshStart = 100
+        self.targetThreshEnd = 260
+        self.targetThresh = self.targetThreshStart
 
 
     def init(self):
@@ -20,30 +22,34 @@ class PluginTarget(object):
         self.targetCenterY = None
         self.targetRadius = None
         self.noAutoTarget = False
-        self.targetThresh = 60
+        self.relief = None
 
 
     def handle(self, frame, contours, reliefs, save=False):
-        if self.targetThresh > 150:
-            # give up here
-            return
-        if self.targetCenterX is not None:
-            return
         if self.noAutoTarget:
             return
 
+        # draw it always
         for relief in reliefs:
             cv2.circle(frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
             for c in contours:
                 cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
 
+        if self.targetThresh > self.targetThreshEnd:
+            self.targetThresh = self.targetThreshStart
+        if self.targetCenterX is not None:
+            return
+
         if len(reliefs) == 0:
             self.targetThresh += 1
         else:
-            print("Auto Target at {}/{} with thresh {}".format(reliefs[0].centerX, reliefs[0].centerY, self.targetThresh))
-            self.targetCenterX = reliefs[0].centerX
-            self.targetCenterY = reliefs[0].centerY
-            self.targetRadius = int(reliefs[0].w / 2)
+            self.relief = reliefs[0]  # just take a random one, its all circles
+
+
+    def useCurrentTarget(self):
+        self.targetCenterX = self.relief.centerX
+        self.targetCenterY = self.relief.centerY
+        self.targetRadius = int(self.relief.w / 2)
 
 
     def draw(self, frame):
