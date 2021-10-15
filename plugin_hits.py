@@ -31,8 +31,9 @@ class PluginHits(object):
         # for some things, we dont care how many we detected, just that we detected at least one
         logger.info("Found hit at frame #" + str(frameNr) + " with radius " + str(recordedHits[0].radius))
         self.hitLastFoundFrameNr = frameNr
-        
-        self.draw(frame, hit)
+
+        # will be drawn later
+        #self.draw(frame, hit)
 
         return hit
 
@@ -40,4 +41,3 @@ class PluginHits(object):
     def draw(self, frame, recordedHit):
         cv2.circle(frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
         cv2.circle(frame, recordedHit.center, 5, (0, 250, 50), -1)
-

@@ -65,7 +65,7 @@ class Lazer(object):
 
 
     def nextFrame(self):
-        """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
+        """Retrieves next frame from video/cam via VideoStream, process it and draw into self.frame"""
         isTrue, self.frame, self.frameNr, self.mode, data = self.detectorThread.getFrameData()
         if not isTrue:  # end of file or stream
             return False, None
@@ -97,7 +97,6 @@ class Lazer(object):
 
     def handleMain(self, frame, frameNr, recordedHits):
         hit = self.pluginHits.handle(frame, frameNr, recordedHits)
-
         if hit is not None:
             # check if we have a target (to measure distance to)
             if self.pluginTarget.targetRadius is not None:
@@ -110,44 +109,17 @@ class Lazer(object):
             self.hits.append(hit)
 
             if self.saveHits:
-                # draw
                 self.saveCurrentFrame(hit)
 
 
     def displayFrame(self):
         """Displays the current frame in the window, with UI data written on it"""
-
-        #if self.targetCenterX != None:
-        #    self.drawTarget()
         self.pluginTarget.draw(self.frame)
-
         if self.withProjector and self.mode == Mode.intro:
             self.pluginAruco.draw(self.frame)
         self.drawUi()
         self.drawHits()
         self.drawGameMode()
-
-        color = (0, 0, 255)
-        if self.threadData['mode'] == Mode.intro:
-            s = "Press SPACE to start"
-            cv2.putText(
-                self.frame,
-                s,
-                ((self.detectorThread.videoStream.width >> 1) - 60, self.detectorThread.videoStream.height - 30),
-                cv2.FONT_HERSHEY_TRIPLEX,
-                1.0,
-                color,
-                2)        
-        elif self.threadData['mode'] == Mode.main:
-            s = "Press SPACE to stop"
-            cv2.putText(
-                self.frame,
-                s,
-                ((self.detectorThread.videoStream.width >> 1) - 60, self.detectorThread.videoStream.height - 30),
-                cv2.FONT_HERSHEY_TRIPLEX,
-                1.0,
-                color,
-                2)        
 
         cv2.imshow('Video', self.frame)
         if self.debug:
@@ -172,27 +144,6 @@ class Lazer(object):
         elif mode == Mode.intro:
             self.gameMode.stop()
             self.resetDynamic()
-
-
-    def setFrameRel(self, frameOffset):
-        print("Lazer: Set Frame rel: {} @ {}".format(frameOffset, self.frameNr))
-        self.detectorThread.setFrameNr(self.frameNr + frameOffset)
-
-
-    def setCrop(self, crop):
-        self.threadData['crop'] = crop
-
-
-    def addThresh(self, thresh):
-        self.threadData['thresh'] += thresh
-
-
-    def getThresh(self):
-        return self.threadData['thresh']
-
-
-    def getMode(self):
-        return self.threadData['mode']
 
 
     def drawUi(self):
@@ -228,6 +179,29 @@ class Lazer(object):
             s = "Target: {}/{} {}".format(self.pluginTarget.targetCenterX, self.pluginTarget.targetCenterY, self.pluginTarget.targetRadius)
             cv2.putText(self.frame, s, (o * 1, 120), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
+        # hints
+        color = (0, 0, 255)
+        if self.threadData['mode'] == Mode.intro:
+            s = "Press SPACE to start"
+            cv2.putText(
+                self.frame,
+                s,
+                ((self.detectorThread.videoStream.width >> 1) - 60, self.detectorThread.videoStream.height - 30),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1.0,
+                color,
+                2)        
+        elif self.threadData['mode'] == Mode.main:
+            s = "Press SPACE to stop"
+            cv2.putText(
+                self.frame,
+                s,
+                ((self.detectorThread.videoStream.width >> 1) - 60, self.detectorThread.videoStream.height - 30),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1.0,
+                color,
+                2)
+
 
     def drawHits(self):
         for idx, hit in enumerate(self.hits):
@@ -246,8 +220,10 @@ class Lazer(object):
                 color = (0, 170, 200)
 
             cv2.putText(self.frame, s, (0, 0 + 140 + (30 * idx)), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
-            cv2.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
-            cv2.circle(self.frame, (hit.x, hit.y), 10, color, -1)
+            self.pluginHits.draw(self.frame, hit)
+            #cv2.circle(self.frame, (hit.x, hit.y), hit.radius, color, 2)
+            #cv2.circle(self.frame, (hit.x, hit.y), 10, color, -1)
+
 
     def drawGameMode(self):
         if not self.gameMode.isShowStart():
@@ -277,6 +253,27 @@ class Lazer(object):
         fname = filenameBase + 'mask.jpg' 
         logger.info("  Save Mask to : " + fname)
         cv2.imwrite(fname, self.mask)
+
+
+    def setFrameRel(self, frameOffset):
+        print("Lazer: Set Frame rel: {} @ {}".format(frameOffset, self.frameNr))
+        self.detectorThread.setFrameNr(self.frameNr + frameOffset)
+
+
+    def setCrop(self, crop):
+        self.threadData['crop'] = crop
+
+
+    def addThresh(self, thresh):
+        self.threadData['thresh'] += thresh
+
+
+    def getThresh(self):
+        return self.threadData['thresh']
+
+
+    def getMode(self):
+        return self.threadData['mode']
 
 
     def release(self):

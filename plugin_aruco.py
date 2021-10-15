@@ -9,6 +9,7 @@ class PluginAruco(object):
         self.arucoCorners = None
         self.arucoIds = None
 
+
     def init(self):
         self.arucoCorners = None
         self.arucoIds = None

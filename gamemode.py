@@ -1,6 +1,5 @@
 import logging
 
-from model import *
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +22,10 @@ class GameMode(object):
 
     def start(self):
         logger.info("Start")
-        self.frameNrStart = self.frameNr + 90 # around 3s
+        self.frameNrStart = self.frameNr + 90  # around 3s
 
     def reset(self):
-        ret = self.frameNr-self.frameNrStart
+        ret = self.frameNr - self.frameNrStart
         self.start()
         return ret
 

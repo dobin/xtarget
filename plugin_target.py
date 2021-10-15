@@ -48,7 +48,7 @@ class PluginTarget(object):
 
     def draw(self, frame):
         if self.targetCenterX is not None:
-            cv2.circle(frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
+            cv2.circle(frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0, 200, 0), 2)
 
 
     def setTargetCenter(self, x, y, targetRadius):
@@ -58,4 +58,3 @@ class PluginTarget(object):
         self.targetCenterY = int(y)
         self.targetRadius = int(targetRadius)
         self.noAutoTarget = True
-        
