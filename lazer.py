@@ -7,6 +7,8 @@ from model import *
 from detectorthread import DetectorThread
 from projector import Projector
 from gamemode import GameMode
+from plugin_hits import PluginHits
+from plugin_glare import PluginGlare
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +33,10 @@ class Lazer(object):
         self.glareEnabled = True
 
         # static hit options
-        self.hitGraceTime = 30  # How many frames between detections (~1s)
         self.hitMinRadius = 1.0  # found out by experimentation
+
+        self.pluginHits = PluginHits()
+        self.pluginGlare = PluginGlare()
 
         self.resetDynamic()
 
@@ -47,13 +51,105 @@ class Lazer(object):
         self.detectorThread.startThread(self.threadData)
 
 
+    def nextFrame(self):
+        """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
+        isTrue, self.frame, self.frameNr, mode, data = self.detectorThread.getFrameData()
+        if not isTrue:  # end of file or stream
+            return False, None
+
+        # reset stats if file rewinds
+        if self.frameNr == 0:
+            self.resetDynamic()
+
+        self.gameMode.nextFrame(self.frameNr)
+
+        if mode == Mode.intro:
+            if self.glareEnabled:
+                self.pluginGlare.handle(self.frame, data['glare'])
+            #self.pluginTarget.handle()
+            #self.pluginAruco.handle()
+
+            #self.handleGlare(data['glare'])
+            self.handleTarget(data['targetContours'], data['targetReliefs'])
+            self.handleAruco(data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
+        elif mode == Mode.main:
+            self.handleMain(self.frame, self.frameNr, data['recordedHits'])
+
+
+        # if we wanna record everything
+        if self.saveFrames:
+            self.saveCurrentFrame()
+
+        return True, data
+
+
+    def handleMain(self, frame, frameNr, recordedHits):
+        hit = self.pluginHits.handle(frame, frameNr, recordedHits)
+
+        if hit is not None:
+            # check if we have a target (to measure distance to)
+            if self.targetRadius != None:
+                p = int(self.getDistanceToCenter(hit.x, hit.y))
+                r = self.targetRadius
+                d = int(p/r * 100)
+                hit.distance = d
+
+            hit.time = self.gameMode.reset()
+            self.hits.append(hit)
+
+            if self.saveHits:
+                # draw
+                self.saveCurrentFrame(hit)
+
+
+    def displayFrame(self):
+        """Displays the current frame in the window, with UI data written on it"""
+
+        if self.targetCenterX != None:
+            self.drawTarget()
+        if self.withProjector:
+            self.drawAruco()
+        self.drawUi()
+        self.drawHits()
+        self.drawGameMode()
+
+        color = (0, 0, 255)
+        if self.threadData['mode'] == Mode.intro:
+            s = "Press SPACE to start"
+            cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+        elif self.threadData['mode'] == Mode.main:
+            s = "Press SPACE to stop"
+            cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
+
+        cv2.imshow('Video', self.frame)
+        if self.debug:
+            #cv2.imshow('Mask', self.detector.mask)
+            pass
+        if self.withProjector:
+            if self.threadData['mode'] == Mode.intro:
+                self.projector.showAruco()
+            elif self.threadData['mode'] == Mode.main:
+                self.projector.showTarget()
+
+
+    def changeMode(self, mode):
+        self.threadData['mode'] = mode
+        print("new mode: " + str(self.threadData['mode']))
+        if mode == Mode.main:
+            self.gameMode.start()
+            if self.withProjector:
+                self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
+                self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
+        elif mode == Mode.intro:
+            self.gameMode.stop()
+            self.resetDynamic()
+
+
     def resetDynamic(self):
         """resets dynamic parameter used to track temporary things (ui cleanup)"""
-        self.glareMeter = 0
-        self.glareMeterAvg = 0
+
  
         self.hits = []
-        self.hitLastFoundFrameNr = 0  # Track when last hit was found
 
         # data for identified target
         self.targetCenterX = None
@@ -83,19 +179,6 @@ class Lazer(object):
         return self.threadData['thresh']
 
 
-    def changeMode(self, mode):
-        self.threadData['mode'] = mode
-        print("new mode: " + str(self.threadData['mode']))
-        if mode == Mode.main:
-            self.gameMode.start()
-            if self.withProjector:
-                self.projector.setTargetCenter(self.targetCenterX, self.targetCenterY, self.targetRadius)
-                self.projector.setCamAruco(self.arucoCorners, self.arucoIds)
-        elif mode == Mode.intro:
-            self.gameMode.stop()
-            self.resetDynamic()
-
-
     def getMode(self):
         return self.threadData['mode']
 
@@ -112,31 +195,6 @@ class Lazer(object):
         self.targetRadius = int(targetRadius)
         self.noAutoTarget = True
 
-
-    def nextFrame(self):
-        """Retrieves next frame from video/cam via VideoStream, process it and store into self.frame and self.mask"""
-        isTrue, self.frame, self.frameNr, mode, data = self.detectorThread.getFrameData()
-        if not isTrue:  # end of file or stream
-            return False, None
-
-        # reset stats if file rewinds
-        if self.frameNr == 0:
-            self.resetDynamic()
-
-        if mode == Mode.intro:
-            self.handleGlare(data['glare'])
-            self.handleTarget(data['targetContours'], data['targetReliefs'])
-            self.handleAruco(data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
-        elif mode == Mode.main:
-            data['recordedHits'] = self.handleHits(data['recordedHits'])
-
-        self.gameMode.nextFrame(self.frameNr)
-
-        # if we wanna record everything
-        if self.saveFrames:
-            self.saveCurrentFrame()
-
-        return True, data
 
 
     def handleAruco(self, corners, ids, rejected):
@@ -203,59 +261,6 @@ class Lazer(object):
         cv2.circle(self.frame, (self.targetCenterX, self.targetCenterY), self.targetRadius, (0,200,0), 2)
 
 
-    def handleGlare(self, glare):
-        if not self.glareEnabled:
-            return
-
-        for rect in glare:
-            cv2.rectangle(self.frame, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (0, 0, 255), 2)
-
-        if len(glare) > 0:
-            if self.glareMeter < 60:  # 30 is typical fps, so 1s
-                self.glareMeter += 4
-        else:
-            if self.glareMeter > 0:
-                self.glareMeter -= 1
-        self.glareMeterAvg = int(self.glareMeterAvg + self.glareMeter) >> 1
-
-
-    def handleHits(self, recordedHits, staticImage=False):
-        """Check if new hits have been detected in the frame"""
-        if not staticImage and self.hitLastFoundFrameNr != 0:
-            # wait a bit between detections
-            if (self.frameNr - self.hitLastFoundFrameNr) < self.hitGraceTime:
-                return []
-
-        if len(recordedHits) == 0:
-            return
-
-        # for some things, we dont care how many we detected, just that we detected at least one
-        logger.info("Found hit at frame #" + str(self.frameNr) + " with radius " + str(recordedHits[0].radius))
-        self.hitLastFoundFrameNr = self.frameNr
-        
-        if self.withProjector:
-            self.projector.handleShot(recordedHits[0])
-
-        # should only be one
-        for recordedHit in recordedHits:
-            # check if we have a target (to measure distance to)
-            if self.targetRadius != None:
-                p = int(self.getDistanceToCenter(recordedHit.x, recordedHit.y))
-                r = self.targetRadius
-                d = int(p/r * 100)
-                recordedHit.distance = d
-
-            recordedHit.time = self.gameMode.reset()
-            self.hits.append(recordedHit)
-
-            if self.saveHits:
-                # draw
-                cv2.circle(self.frame, (int(recordedHit.x), int(recordedHit.y)), int(recordedHit.radius), (0, 100, 50), 2)
-                cv2.circle(self.frame, recordedHit.center, 5, (0, 250, 50), -1)
-                self.saveCurrentFrame(recordedHit)
-
-        return recordedHits
-
     def drawUi(self):
         # UI
         o = 300
@@ -263,8 +268,8 @@ class Lazer(object):
         s= "Tresh: " + str(self.getThresh())
         cv2.putText(self.frame, s, (o*0,30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
-        if self.glareMeterAvg > 0:
-            cv2.putText(self.frame, "Glare: " + str(self.glareMeterAvg), (0,140), cv2.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
+        if self.pluginGlare.glareMeterAvg > 0:
+            cv2.putText(self.frame, "Glare: " + str(self.pluginGlare.glareMeterAvg), (0,140), cv2.FONT_HERSHEY_TRIPLEX, 1.0, (0, 0, 255), 2)
 
         s = "Mode: " + str(self.threadData['mode'].name)
         cv2.putText(self.frame, s, (o*0,90), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
@@ -311,37 +316,6 @@ class Lazer(object):
         color = (0, 100, 240)
         cv2.putText(self.frame, "Shoot!", (500,440), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
-
-    def displayFrame(self):
-        """Displays the current frame in the window, with UI data written on it"""
-
-        if self.targetCenterX != None:
-            self.drawTarget()
-        if self.withProjector:
-            self.drawAruco()
-        self.drawUi()
-        self.drawHits()
-        self.drawGameMode()
-
-        color = (0, 0, 255)
-        if self.threadData['mode'] == Mode.intro:
-            s = "Press SPACE to start"
-            cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
-        elif self.threadData['mode'] == Mode.main:
-            s = "Press SPACE to stop"
-            cv2.putText(self.frame, s, ((self.detectorThread.videoStream.width >> 1) - 60,self.detectorThread.videoStream.height - 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)        
-
-
-
-        cv2.imshow('Video', self.frame)
-        if self.debug:
-            #cv2.imshow('Mask', self.detector.mask)
-            pass
-        if self.withProjector:
-            if self.threadData['mode'] == Mode.intro:
-                self.projector.showAruco()
-            elif self.threadData['mode'] == Mode.main:
-                self.projector.showTarget()
 
 
     def saveCurrentFrame(self, recordedHit=None):
