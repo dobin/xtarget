@@ -15,6 +15,7 @@ from plugin_aruco import PluginAruco
 logger = logging.getLogger(__name__)
 
 
+
 class Lazer(object):
     """Manages detection via Detector on VideoStream"""
 
@@ -156,7 +157,7 @@ class Lazer(object):
         # UI
         o = 300
         color = (255, 255, 255)
-        s = "Tresh: " + str(self.getThresh()) + " / " + str(self.pluginTarget.targetThresh)
+        s = "Tresh: " + str(self.getThresh()) + " / " + str(self.pluginTarget.targetThresh - 100)
         cv2.putText(self.frame, s, (o * 0, 30), cv2.FONT_HERSHEY_TRIPLEX, 1.0, color, 2)
 
         if self.pluginGlare.glareMeterAvg > 0:
@@ -270,8 +271,12 @@ class Lazer(object):
         self.threadData['crop'] = crop
 
 
-    def addThresh(self, thresh):
-        self.threadData['thresh'] += thresh
+    #def addThresh(self, thresh):
+    #    self.threadData['thresh'] += thresh
+
+
+    def setThresh(self, thresh):
+        self.threadData['thresh'] = thresh
 
 
     def getThresh(self):

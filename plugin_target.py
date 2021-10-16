@@ -13,8 +13,9 @@ class PluginTarget(object):
 
         self.noAutoTarget = False
         self.targetThreshStart = 100
-        self.targetThreshEnd = 260
+        self.targetThreshEnd = 300
         self.targetThresh = self.targetThreshStart
+        self.reliefCounter = 0
 
 
     def init(self):
@@ -23,27 +24,37 @@ class PluginTarget(object):
         self.targetRadius = None
         self.noAutoTarget = False
         self.relief = None
+        self.reliefCounter = 0
 
 
     def handle(self, frame, contours, reliefs, save=False):
-        if self.noAutoTarget:
-            return
-
         # draw it always
-        for relief in reliefs:
-            cv2.circle(frame, (relief.centerX, relief.centerY), 10, (100, 255, 100), -1)
-            for c in contours:
-                cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
+        #for relief in reliefs:
+        for c in contours:
+            cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
 
-        if self.targetThresh > self.targetThreshEnd:
-            self.targetThresh = self.targetThreshStart
+        if self.relief is not None:
+            cv2.circle(frame, (self.relief.centerX, self.relief.centerY), 10, (100, 255, 100), -1)
+
+        # do nothing when already set
         if self.targetCenterX is not None:
             return
 
-        if len(reliefs) == 0:
-            self.targetThresh += 1
-        else:
-            self.relief = reliefs[0]  # just take a random one, its all circles
+        if not self.noAutoTarget:
+            # reset if necessary
+            if self.targetThresh > self.targetThreshEnd:
+                self.targetThresh = self.targetThreshStart
+
+            # adjust threshhold, or take a detected circle as target
+            if len(reliefs) == 0:
+                self.targetThresh += 1
+
+        if len(reliefs) > 0:
+            if self.reliefCounter > 20:
+                self.reliefCounter = 0
+                self.relief = reliefs[0]  # just take a random one, its all circles
+            else:
+                self.reliefCounter += 1
 
 
     def useCurrentTarget(self):

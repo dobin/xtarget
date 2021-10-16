@@ -40,9 +40,8 @@ def main():
     ap.add_argument("--camProjector", help="Cam: Use projector (with Aruco)", action='store_true')
     ap.add_argument("--test", help="Perform analysis of test-videos and validate (slow)", action='store_true')
     ap.add_argument("--testQuick", help="Perform analysis of test-pics and validate (fast)", action='store_true')
-
+    ap.add_argument("--target", help="Try to detect iTarget", action='store_true')
     ap.add_argument("--write", help="Write hits from video file as jpg+yaml files")
-    
     ap.add_argument("--showframe", help="Show a specific frame (--framenr) of a video")
     ap.add_argument("--framenr", help="Showframe: frame nr to display", type=int)
 
@@ -65,7 +64,10 @@ def main():
             return
         videoStream.setCrop(videoFileConfig['crop'])
 
-        playback = Playback(videoStream, withProjector=args.camProjector, thresh=videoFileConfig['thresh'], saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback(
+            videoStream, withProjector=args.camProjector,
+            thresh=videoFileConfig['thresh'],
+            saveFrames=args.saveFrames, saveHits=args.saveHits, enableTarget=args.target)
         playback.init()
         playback.play()
 
@@ -78,7 +80,9 @@ def main():
             resolution = {'width': args.width, 'height': args.height}
 
         videoStream.initCam(camId, resolution=resolution)
-        playback = Playback(videoStream, withProjector=args.camProjector, saveFrames=args.saveFrames, saveHits=args.saveHits)
+        playback = Playback(
+            videoStream, withProjector=args.camProjector, 
+            saveFrames=args.saveFrames, saveHits=args.saveHits, enableTarget=args.target)
         playback.init()
         playback.play()
 

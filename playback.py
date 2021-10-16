@@ -20,12 +20,13 @@ class Playback(object):
         self.cursesEnabled = cursesEnabled
         self.lazer = Lazer(
             videoStream,
-            withProjector=withProjector, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro, enableTarget=enableTarget)
+            withProjector=withProjector, thresh=thresh,
+            saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro, enableTarget=enableTarget)
 
         self.cursesUi = None
         self.isPaused = False
         self.cropModeEnabled = False
-        self.targetModeEnabled = False
+        self.targetModeEnabled = enableTarget
 
         self.initClick()
 
@@ -46,6 +47,9 @@ class Playback(object):
             self.cursesUi.initCurses()
 
         cv2.namedWindow('Video')
+        cv2.createTrackbar('Threshhold', 'Video', 14, 30, self.trackbarCallbackThresh)
+        if self.targetModeEnabled:
+            cv2.createTrackbar('Target', 'Video', 0, 200, self.trackbarCallbackTarget)
         cv2.setMouseCallback("Video", self.clickTrack)
 
 
@@ -73,6 +77,15 @@ class Playback(object):
         self.lazer.release()
         cv2.destroyAllWindows()
         print("Quitting nicely...")
+
+
+    def trackbarCallbackThresh(self, preset):
+        self.lazer.setThresh(preset)
+
+
+    def trackbarCallbackTarget(self, preset):
+        self.lazer.pluginTarget.noAutoTarget = True
+        self.lazer.pluginTarget.targetThresh = preset + 100
 
 
     def handleKey(self, key):
@@ -122,10 +135,10 @@ class Playback(object):
         # frame. We have to manually go one back every time with setFrame(lazer.FrameNr)
         if key == ord('s'):  # save frame
             self.lazer.saveCurrentFrame(epilog=".live")
-        if key == ord('j'):  # decrease threshhold
-            self.lazer.addThresh(-1)
-        if key == ord('k'):  # increase threshhold
-            self.lazer.addThresh(1)
+        #if key == ord('j'):  # decrease threshhold
+        #    self.lazer.addThresh(-1)
+        #if key == ord('k'):  # increase threshhold
+        #    self.lazer.addThresh(1)
 
         return ret
 
