@@ -45,12 +45,12 @@ class PluginTarget(object):
             if self.targetThresh > self.targetThreshEnd:
                 self.targetThresh = self.targetThreshStart
 
-            # adjust threshhold, or take a detected circle as target
+            # adjust threshhold
             if len(reliefs) == 0:
                 self.targetThresh += 1
 
         if len(reliefs) > 0:
-            if self.reliefCounter > 20:
+            if self.reliefCounter > 20:  # all 20 frames with reliefs identified
                 self.reliefCounter = 0
                 self.relief = reliefs[0]  # just take a random one, its all circles
             else:

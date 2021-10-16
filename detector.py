@@ -23,7 +23,7 @@ class Detector():
         self.mask = None
         self.previousMask = None
         self.mask2 = None
-        
+
 
     def initFrame(self, frame, thresh):
         self.frame = frame

@@ -17,7 +17,7 @@ class PluginAruco(object):
 
     def handle(self, frame, corners, ids, rejected):
         if self.arucoCorners is not None:
-            return
+            return None, None
 
         for corner in corners:
             a = (int(corner[0][0][0]), int(corner[0][0][1]))
@@ -26,7 +26,7 @@ class PluginAruco(object):
                 frame,
                 a,
                 b,
-                (0, 255, 255), 2)
+                (0, 255, 0), 2)
 
         if len(corners) != 4:
             return None, None

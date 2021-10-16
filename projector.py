@@ -51,7 +51,33 @@ class Projector():
         self.srcMat = None
         self.dstMat = None
 
+        self.lineWidth = 30
+        self.lineHalfWidth = 24
+        self.lineFsck = 50
+
         self.frameSrc = np.zeros((height, width, 3), np.uint8)
+        self.picAruco = self._getPicAruco()
+        self.picTargetBase = self._getPicTarget()
+
+        cv2.namedWindow("Projector")
+        cv2.createTrackbar('lineWidth', 'Projector', 30, 60, self.trackbarCallbackLineWidth)
+        cv2.createTrackbar('lineHalfWidth', 'Projector', 30, 60, self.trackbarCallbackLineHalfWidth)
+        cv2.createTrackbar('lineFsck', 'Projector', 50, 60, self.trackbarCallbackLineFsck)
+
+    def trackbarCallbackLineWidth(self, preset):
+        self.lineWidth = preset
+        self.fsckInit()
+
+    def trackbarCallbackLineHalfWidth(self, preset):
+        self.lineHalfWidth = preset
+        self.fsckInit()
+
+    def trackbarCallbackLineFsck(self, preset):
+        self.lineFsck = preset
+        self.fsckInit()
+
+    def fsckInit(self):
+        self.frameSrc = np.zeros((self.height, self.width, 3), np.uint8)
         self.picAruco = self._getPicAruco()
         self.picTargetBase = self._getPicTarget()
 
@@ -170,22 +196,35 @@ class Projector():
         return frame
 
 
+    def rectangle(self, img, pt1, pt2, color, thickness):
+        cv2.line(img, pt1, (pt1[0], pt1[1] + 100), color, thickness, cv2.LINE_4)
+
+
     def _getPicAruco(self):
         """Draw the four Aruco squares we project"""
         frame = self.frameSrc.copy()
         c = (200, 200, 200)
+        b = (0, 0, 0)
 
         # aruco
         # ?? When running the detection on a single marker, the results are best when
         # ?? the size of the white margin is at least as big as the black border of the marker.
-        lineWidth = 30
-        lineHalfWidth = (lineWidth >> 1) + 0
+        
+        #lineWidth = 30
+        #lineHalfWidth = (lineWidth >> 1) + 15
+        #lineFsck = lineHalfWidth * 2  # we have to draw a second rectangle over the first one to square off its round edges...
+
+        lineWidth = self.lineWidth
+        lineHalfWidth = self.lineHalfWidth
+        lineFsck = self.lineFsck
+
         #cv2.rectangle(frame,
         #    (self.arucoX, self.arucoY),
         #    (self.arucoX+self.arucoWidth, self.arucoY+self.arucoHeight),
         #    (0, 255, 0), 1)
 
-        # this is stupid
+        # this is fucking stupid
+
         # A
         imageCopyInto(
             frame,
@@ -197,8 +236,18 @@ class Projector():
             frame,
             (self.arucoX - lineHalfWidth, self.arucoY - lineHalfWidth),
             (self.arucoX + self.arucoSymbolSize + lineHalfWidth, self.arucoY + self.arucoSymbolSize + lineHalfWidth),
-            c, lineWidth
+            c,
+            lineWidth
         )
+        cv2.rectangle(
+            frame,
+            (self.arucoX - lineFsck, self.arucoY - lineFsck),
+            (self.arucoX + self.arucoSymbolSize + lineFsck, self.arucoY + self.arucoSymbolSize + lineFsck),
+            b,
+            lineWidth
+        )
+
+
         # B
         imageCopyInto(
             frame,
@@ -214,6 +263,15 @@ class Projector():
                 self.arucoY + self.arucoSymbolSize + lineHalfWidth),
             c, lineWidth
         )
+        cv2.rectangle(
+            frame,
+            (self.arucoX - lineFsck + self.arucoWidth - self.arucoSymbolSize, self.arucoY - lineFsck),
+            (
+                self.arucoX + self.arucoWidth - self.arucoSymbolSize + self.arucoSymbolSize + lineFsck, 
+                self.arucoY + self.arucoSymbolSize + lineFsck),
+            b, lineWidth
+        )
+
         # C
         imageCopyInto(
             frame,
@@ -229,7 +287,18 @@ class Projector():
             (
                 self.arucoX + self.arucoSymbolSize + lineHalfWidth + self.arucoWidth - self.arucoSymbolSize, 
                 self.arucoY + self.arucoSymbolSize + lineHalfWidth + self.arucoHeight - self.arucoSymbolSize),
-            c, 
+            c,
+            lineWidth
+        )
+        cv2.rectangle(
+            frame,
+            (
+                self.arucoX - lineFsck + self.arucoWidth - self.arucoSymbolSize, 
+                self.arucoY - lineFsck + self.arucoHeight - self.arucoSymbolSize), 
+            (
+                self.arucoX + self.arucoSymbolSize + lineFsck + self.arucoWidth - self.arucoSymbolSize, 
+                self.arucoY + self.arucoSymbolSize + lineFsck + self.arucoHeight - self.arucoSymbolSize),
+            b,
             lineWidth
         )
         # D
@@ -245,7 +314,16 @@ class Projector():
             (
                 self.arucoX + self.arucoSymbolSize + lineHalfWidth,
                 self.arucoY + self.arucoSymbolSize + lineHalfWidth + self.arucoHeight - self.arucoSymbolSize),
-            c, 
+            c,
+            lineWidth
+        )
+        cv2.rectangle(
+            frame,
+            (self.arucoX - lineFsck, self.arucoY - lineFsck + self.arucoHeight - self.arucoSymbolSize),
+            (
+                self.arucoX + self.arucoSymbolSize + lineFsck,
+                self.arucoY + self.arucoSymbolSize + lineFsck + self.arucoHeight - self.arucoSymbolSize),
+            b,
             lineWidth
         )
         return frame
