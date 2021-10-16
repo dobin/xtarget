@@ -9,6 +9,8 @@ def main():
     ap = argparse.ArgumentParser()
     # ap = GooeyParser(description="settings_msg")
     ap.add_argument("--cam", help="Webcam ID", action='count', default=0)
+
+    ap.add_argument("--enableTarget", help="Enable detection of iTarget or similar target", action='store_true')
     ap.add_argument("--camProjector", help="Use projector", action='store_true')
     ap.add_argument("--saveHits", help="Save picture of hits", action='store_true')
     args = ap.parse_args()
@@ -22,7 +24,9 @@ def main():
         #    resolution = {'width': args.width, 'height': args.height}
 
         videoStream.initCam(camId, resolution=resolution)
-        playback = Playback(videoStream, withProjector=args.camProjector, saveFrames=False, saveHits=args.saveHits)
+        playback = Playback(
+            videoStream,
+            withProjector=args.camProjector, saveHits=args.saveHits, enableTarget=args.enableTarget)
         playback.init()
         playback.play()
 

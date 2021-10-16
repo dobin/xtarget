@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 class Playback(object):
     """Opens a window to play back a video/cam via VideoStream and uses Lazer for detection and visualization"""
 
-    def __init__(self, videoStream, withProjector, thresh=14, saveFrames=False, saveHits=False, cursesEnabled=False):
+    def __init__(self, videoStream, withProjector, thresh=14, saveFrames=False, saveHits=False, cursesEnabled=False, enableTarget=False):
         """Call init() before use"""
         self.videoStream = videoStream
         self.cursesEnabled = cursesEnabled
         self.lazer = Lazer(
-            videoStream, withProjector=withProjector, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro)
+            videoStream,
+            withProjector=withProjector, thresh=thresh, saveFrames=saveFrames, saveHits=saveHits, mode=Mode.intro, enableTarget=enableTarget)
 
         self.cursesUi = None
         self.isPaused = False

@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 class Lazer(object):
     """Manages detection via Detector on VideoStream"""
 
-    def __init__(self, videoStream, thresh=14, withProjector=False, saveFrames=False, saveHits=False, mode=Mode.main):
+    def __init__(
+        self, videoStream, thresh=14,
+        withProjector=False, saveFrames=False, saveHits=False, mode=Mode.main, enableTarget=False, debug=True
+    ):
         self.saveFrames = saveFrames
         self.saveHits = saveHits
         self.detectorThread = DetectorThread(videoStream)
@@ -27,9 +30,9 @@ class Lazer(object):
         self.projector = Projector()
         self.gameMode = GameMode()
 
-        self.debug = True
+        self.debug = debug
         self.glareEnabled = True
-        self.targetEnabled = True
+        self.targetEnabled = enableTarget
 
         self.pluginHits = PluginHits()
         self.pluginGlare = PluginGlare()
