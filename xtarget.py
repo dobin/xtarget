@@ -1,14 +1,11 @@
 import cv2
-from collections import deque
 import argparse
 
 from lazer import Lazer
-from model import *
-from videotests import *
-from gfxutils import *
-
-import curses
-from threading import Thread
+from model import Mode
+from videotests import writeVideoInfo
+from gfxutils import readVideoFileConfig
+#import curses
 from playback import Playback
 from videostream import FileVideoStream, CamVideoStream
 
@@ -52,7 +49,7 @@ def main():
     # options
     ap.add_argument("--saveHits", help='Option: Save jpg+yaml of all detected hits', action='store_true', default=False)
     ap.add_argument("--saveFrames", help='Option: Save jpg+yaml of every frame', action='store_true', default=False)
-    ap.add_argument("--curses", help='Camera option: Show curses ui in terminal for webcam settings (broken)', action='store_true', default=False)
+    #ap.add_argument("--curses", help='Camera option: Show curses ui in terminal for webcam settings (broken)', action='store_true', default=False)
     ap.add_argument("--width", help="Camera option: resolution width", type=int)
     ap.add_argument("--height", help="Camera option: resolution height", type=int)
     args = ap.parse_args()
@@ -76,9 +73,9 @@ def main():
         camId = int(args.cam)
         videoStream = CamVideoStream(threaded=True)
 
-        resolution={'width': 1920, 'height': 1080}
-        if args.width != None and args.height != None:
-            resolution={'width': args.width, 'height': args.height}
+        resolution = {'width': 1920, 'height': 1080}
+        if args.width is not None and args.height is not None:
+            resolution = {'width': args.width, 'height': args.height}
 
         videoStream.initCam(camId, resolution=resolution)
         playback = Playback(videoStream, withProjector=args.camProjector, saveFrames=args.saveFrames, saveHits=args.saveHits)
@@ -97,7 +94,7 @@ def main():
         lazer = Lazer(videoStream, mode=Mode.intro)
         lazer.nextFrame()  # gets next frame, and creates mask
         lazer.displayFrame()  # draw ui n stuff
-        key = cv2.waitKey(0) 
+        key = cv2.waitKey(0)
 
     elif args.test:
         doTests()
@@ -118,6 +115,7 @@ def startCursesThread():
     gui = Gui(data)
     gui.initCurses()
     gui.run()
+
 
 if __name__ == "__main__":
     main()

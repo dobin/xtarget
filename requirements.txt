@@ -2,3 +2,4 @@ opencv-contrib-python
 imutils
 scikit-image
 pyyaml
+Gooey
