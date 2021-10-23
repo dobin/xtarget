@@ -1,6 +1,7 @@
 import cv2
 import yaml
 import logging
+import numpy as np
 
 from gfxutils import calculateDistance
 from model import Mode
@@ -87,9 +88,11 @@ class Lazer(object):
                 self.pluginTarget.handle(self.frame, data['targetContours'], data['targetReliefs'])
                 self.threadData["targetThresh"] = self.pluginTarget.targetThresh
             if self.withProjector:
-                arucoCorners, arucoIds = self.pluginAruco.handle(self.frame, data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
-                if arucoCorners is not None:
-                    self.projector.setCamAruco(arucoCorners, arucoIds)
+                self.pluginAruco.handle(self.frame, data['arucoCorners'], data['arucoIds'], data['arucoRejected'])
+                if len(self.pluginAruco.arucoCornersAll) == 4 and self.projector.H is None:
+                    corners = np.array(list(self.pluginAruco.arucoCornersAll.values()))
+                    ids = np.array(list(self.pluginAruco.arucoIdsAll.values()))
+                    self.projector.setCamAruco(corners, ids)
         elif self.mode == Mode.main:
             self.handleMain(self.frame, self.frameNr, data['recordedHits'])
 

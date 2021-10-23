@@ -127,7 +127,15 @@ class Projector():
     def setCamAruco(self, arucoCorners, arucoIds):
         """Set the detected Cam/Video Arucos, and calculate the transformation matrix to us"""
         if arucoCorners is None:
+            logger.Warn("No corners")
             return
+        if arucoIds is None:
+            logger.Warn("No ids")
+            return
+        if self.H is not None:  # only do it once
+            return
+
+        logger.info("Set Cam Aruco")
         ids = arucoIds.flatten()
         refPts = []
 
@@ -143,9 +151,8 @@ class Projector():
             # corner (x, y)-coordinates to our list of reference points
             j = np.squeeze(np.where(ids == i))
 
-            print("-> i: {}  j: {}".format(i, j))
             if isinstance(j, list):
-                print("-> Something went wrong")
+                print("SetCamAruco: Something went wrong")
                 return
 
             corner = np.squeeze(arucoCorners[j])
