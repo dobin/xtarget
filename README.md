@@ -1,6 +1,6 @@
 # xTarget
 
-Identifying laser points on targets. 
+Identifying laser points on targets. [Video](https://youtu.be/DLHdM5cnhHU)
 
 
 ## Install 
